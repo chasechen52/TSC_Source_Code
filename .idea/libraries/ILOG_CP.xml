@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="ILOG.CP">
+    <CLASSES>
+      <root url="jar:///Applications/CPLEX_Studio_Community2211/cpoptimizer/lib/ILOG.CP.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <NATIVE>
+      <root url="file:///Applications/CPLEX_Studio_Community2211/cpoptimizer/bin/arm64_osx" />
+    </NATIVE>
+    <SOURCES />
+  </library>
+</component>

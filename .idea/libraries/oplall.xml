@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="oplall">
+    <CLASSES>
+      <root url="jar:///Applications/CPLEX_Studio_Community2211/opl/lib/oplall.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <NATIVE>
+      <root url="file:///Applications/CPLEX_Studio_Community2211/opl/bin/arm64_osx" />
+    </NATIVE>
+    <SOURCES />
+  </library>
+</component>
