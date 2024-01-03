@@ -1,0 +1,25 @@
+<component name="libraryTable">
+  <library name="net.sf.jgap" type="repository">
+    <properties maven-id="net.sf.jgap:jgap:3.4.4" />
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/net/sf/jgap/jgap/3.4.4/jgap-3.4.4.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/commons-lang/commons-lang/2.3/commons-lang-2.3.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/log4j/log4j/1.2.9/log4j-1.2.9.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/commons-codec/commons-codec/1.3/commons-codec-1.3.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/sf/trove4j/trove4j/2.0.2/trove4j-2.0.2.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/thoughtworks/xstream/xstream/1.2.2/xstream-1.2.2.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/xpp3/xpp3_min/1.1.3.4.O/xpp3_min-1.1.3.4.O.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/xpp3/xpp3/1.1.3.4.O/xpp3-1.1.3.4.O.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/commons-cli/commons-cli/1.0/commons-cli-1.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/commons-logging/commons-logging/1.0/commons-logging-1.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/tablelayout/TableLayout/20050920/TableLayout-20050920.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/sf/jcgrid/jcgrid/0.05/jcgrid-0.05.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/junit-addons/junit-addons/1.4/junit-addons-1.4.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/junit/junit/3.8.1/junit-3.8.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/xerces/xercesImpl/2.6.2/xercesImpl-2.6.2.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/xerces/xmlParserAPIs/2.6.2/xmlParserAPIs-2.6.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -46,6 +46,8 @@
     <orderEntry type="library" name="cplex" level="project" />
     <orderEntry type="library" name="ILOG.CP" level="project" />
     <orderEntry type="library" name="oplall" level="project" />
-    <orderEntry type="library" name="geodesy-1.1.3" level="project" />
+    <orderEntry type="library" name="gavaghan.geodesy" level="project" />
+    <orderEntry type="library" name="io.jenetics" level="project" />
+    <orderEntry type="library" name="net.sf.jgap" level="project" />
   </component>
 </module>
