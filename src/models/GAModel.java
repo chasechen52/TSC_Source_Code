@@ -1,24 +1,16 @@
 package models;
 
 import io.jenetics.*;
-import io.jenetics.engine.Engine;
-import io.jenetics.engine.EvolutionResult;
-import io.jenetics.engine.EvolutionStatistics;
-import io.jenetics.util.Factory;
-import tool.RandomGraphGenerator;
+import io.jenetics.engine.*;
+import io.jenetics.stat.DoubleMomentStatistics;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
-import static io.jenetics.engine.Limits.bySteadyFitness;
 
 public class GAModel {
 
     private int mServersNumber;   // 服务器数量
-    private int[][] mAccessMatrix;   // 可访问矩阵,初始为全0矩阵
+    private static int[][] mAccessMatrix;   // 可访问矩阵,初始为全0矩阵
     private int[][] mDistanceMatrix;  // 最短距离矩阵
     private int mhops;     // 允许的跳数
     private int mPacketsNeed;  // 最后需要的分块数
@@ -51,8 +43,7 @@ public class GAModel {
 
         ByteArrayInputStream byteIn = new ByteArrayInputStream(byteOut.toByteArray());
         ObjectInputStream in = new ObjectInputStream(byteIn);
-        @SuppressWarnings("unchecked")
-        List<T> dest = (List<T>) in.readObject();
+        @SuppressWarnings("unchecked") List<T> dest = (List<T>) in.readObject();
         return dest;
     }
 
@@ -73,10 +64,12 @@ public class GAModel {
                     access++;
                     mAccessMatrix[i][j] = 1;
                 } else mAccessMatrix[i][j] = 0;
+                System.out.print(mAccessMatrix[i][j] + ",");
             }
+            System.out.println();
             mDegrees.put(i, access); // access为广义上的度
         }
-        System.out.println("各节点度数：" + mDegrees);
+        // System.out.println("各节点度数：" + mDegrees);
     }
 
     public static int getMapMaxValueKey(Map<Integer, Integer> map)  // 取出最大value对应的Key值,Int
@@ -85,6 +78,20 @@ public class GAModel {
         Collections.sort(list, (o1, o2) -> (o1.getValue().intValue() - o2.getValue().intValue()));
         int key = list.get(list.size() - 1).getKey();
         return key;
+    }
+
+    public int getMapMaxValue(Map<Integer, Integer> maps)  // 取出最小value
+    {
+        Comparator<Map.Entry<Integer, Integer>> valCmp = new Comparator<Map.Entry<Integer, Integer>>() {
+            @Override
+            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
+                return o2.getValue().intValue() - o1.getValue().intValue();  // 升序排序
+            }
+        };
+        List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(maps.entrySet()); // 传入maps实体
+        Collections.sort(list, valCmp);
+
+        return list.get(0).getValue();
     }
 
 
@@ -121,72 +128,55 @@ public class GAModel {
         return false;
     }
 
-    private static int[][] GraphGenerate(int serversNumber, double density) {
-        RandomGraphGenerator graphGenerator = new RandomGraphGenerator(serversNumber, density);
-        graphGenerator.createRandomGraph();
-        int[][] adjacencyMatrix = graphGenerator.getRandomGraphAdjacencyMatrix();
-        int[][] distanceMatrics = graphGenerator.getRandomGraphDistanceMatrix();
-
-        // int [][] distanceMatrics = new int [][]
-        // {
-        // 	{0,2,2,2,2,2,2,2,1,1},
-        // 	{2,0,2,2,2,2,2,2,1,1},
-        // 	{2,2,0,2,2,2,2,2,1,1},
-        // 	{2,2,2,0,2,2,2,2,1,1},
-        // 	{2,2,2,2,0,2,2,2,1,1},
-        // 	{2,2,2,2,2,0,2,2,1,1},
-        // 	{2,2,2,2,2,2,0,2,1,1},
-        // 	{2,2,2,2,2,2,2,0,1,1},
-        // 	{1,1,1,1,1,1,1,1,0,1},
-        // 	{1,1,1,1,1,1,1,1,1,0},
-
-        // };
-
-
-        System.out.println("\n------- AdjMatrix -------"); // 打印邻接矩阵方便绘图
-        for (int i = 0; i < serversNumber; ++i) {
-            System.out.println(Arrays.toString(adjacencyMatrix[i]) + ",");
-        }
-        System.out.println("\n");
-
-        return distanceMatrics;
-    }
-
-    // 轮盘赌选择
-    private static List<Genotype<BitGene>> rouletteWheelSelection(List<Genotype<BitGene>> population, Map<Integer, Integer> mDegrees) {
-        int chromeosomeTotalDgree = mDegrees.values().stream().mapToInt(Integer::intValue).sum();
-        double[] cumulativeProbabilities = new double[population.size()];
-
-        // 计算累积概率
-        double cumulativeProbability = 0;
-        for (int i = 0; i < population.size(); i++) {
-            cumulativeProbability += (double) mDegrees.get(i) / chromeosomeTotalDgree;
-            cumulativeProbabilities[i] = cumulativeProbability;
-        }
-
-        // 进行轮盘赌选择
-        return Stream.generate(() -> {
-                    double randomValue = Math.random();
-                    for (int i = 0; i < cumulativeProbabilities.length; i++) {
-                        if (randomValue <= cumulativeProbabilities[i]) {
-                            return population.get(i);
-                        }
-                    }
-                    return null; // 这里不会执行到，只是为了符合 Stream.generate 的要求
-                })
-                .limit(population.size())
-                .collect(Collectors.toList());
-    }
     // Define the fitness function
-    private static Integer fitness(Genotype<BitGene> genotype) {
-        // Your fitness calculation logic goes here
-        // For each server, calculate its degree (connectivity) and multiply it by the gene value
-        // Sum up the results for all servers to get the fitness value
-        int fitness = 0;
-        for (int i = 0; i < 10; i++) {
-            int degree = mDegrees.get(i);
-            int geneValue = genotype.getChromosome().getGene(i).getBit() ? 1 : 0;
-            fitness += degree * geneValue;
+    private static double fitness(Genotype<IntegerGene> PLSolution) {
+        Chromosome<IntegerGene> M_number_chromosome = PLSolution.getChromosome(0);
+        Chromosome<IntegerGene> data_placement_chromosome = PLSolution.getChromosome(1);
+        int N_DataNumber = 0;
+        int M_chunkNumber = M_number_chromosome.getGene(0).intValue();
+        // double smoothingFactor = 1;  // 平滑项，可为其他适当的小数值
+        // double penaltyValue = 100; // 惩罚项
+        double fitness;
+        boolean isFeasibleSolution = true;
+        double dataCost;
+        int dataBenefit = 0;
+
+        // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
+        // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
+        for (int i = 0; i < data_placement_chromosome.length(); i++) {
+            N_DataNumber += data_placement_chromosome.getGene(i).intValue();
+            dataBenefit += data_placement_chromosome.getGene(i).intValue() * mDegrees.get(i);
+        }
+        if (N_DataNumber < M_chunkNumber) {
+            // 如果总数据块不够则直接判定不可行
+            isFeasibleSolution = false;
+        } else {
+            // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
+            for (int i = 0; i < data_placement_chromosome.length(); i++) {
+                int mRequired = M_chunkNumber;
+                for (int j = 0; j < data_placement_chromosome.length(); j++) {
+                    boolean canAccess = mAccessMatrix[i][j] == 1;
+                    boolean hasData = data_placement_chromosome.getGene(j).intValue() == 1;
+                    if (canAccess && hasData) --mRequired;
+                    if (mRequired == 0) break;
+                }
+                if (mRequired > 0) {
+                    isFeasibleSolution = false;
+                    break;
+                }
+                // System.out.println(isFeasibleSolution);
+                // System.out.println(mRequired);
+            }
+        }
+        dataCost = -((double) N_DataNumber / M_chunkNumber);
+        // 适应度：å数据增益 + ß成本 + ∂是否可行解
+        double a = 1;
+        double b = 5.5;
+        double c = 200;
+        double isFeasibleSolutionValue = isFeasibleSolution ? 1 : -1;
+        fitness = a * dataBenefit + b * dataCost + c * isFeasibleSolutionValue;
+        if (isFeasibleSolution) {
+            System.out.println("Solution： " + M_chunkNumber + "," + data_placement_chromosome);
         }
         return fitness;
     }
@@ -194,25 +184,39 @@ public class GAModel {
     public void runGACost(int population, int serverNumber) {
         // 首先进行矩阵转化，计算度
         ConvertDistoAccAndCalDegree();
-        // 1.) Define the genotype (factory) suitable for the problem.
-        // 我们创建了长度为 s 的BitChromosome，染色体中包含 1 的概率等于 0.5。
-        Factory<Genotype<BitGene>> gtf = Genotype.of(BitChromosome.of(serverNumber, 0.5));
-        System.out.println("gtf" + gtf);
-        Engine<BitGene, Integer> engine = Engine.builder(GAModel::fitness, gtf)
-                .populationSize(population)
-                .selector(new RouletteWheelSelector<>())
-                .alterers(new Mutator<>(0.2))
-                .build();
-        EvolutionStatistics<Integer, ?> statistics = EvolutionStatistics.ofNumber();
 
-        // Run the genetic algorithm
-        Phenotype<BitGene, Integer> result = engine.stream()
-                .limit(bySteadyFitness(7))
-                .peek(statistics)
-                .collect(EvolutionResult.toBestPhenotype());
-        // Print the best solution
-        System.out.println("statistics \n" + statistics);
-        System.out.println("Best Solution: " + result);
+        IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, serverNumber);
+        IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1);
+
+        Genotype<IntegerGene> PLSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
+
+        System.out.println("PLSolution" + PLSolution);
+
+        Engine<IntegerGene, Double> engine = Engine.builder(GAModel::fitness, PLSolution)
+                // .constraint(new SolutionConstraint())
+                .populationSize(population)
+                .offspringFraction(0.8)
+                .survivorsFraction(0.2)
+                .selector(new TournamentSelector<>()) // 选择
+                .alterers(new Mutator<>(0.2))  // 变异概率0.2
+                .build();
+
+        EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
+
+        EvolutionResult<IntegerGene, Double> result = engine.stream()
+                .limit(Limits.bySteadyFitness(50))
+                .peek(Statistics)
+                .collect(EvolutionResult.toBestEvolutionResult());
+
+        double M =  result.getBestPhenotype().getGenotype().getChromosome(0).getGene(0).intValue();
+        double N = 0;
+        for (int i = 0; i < data_placement_chromosome.length(); i++) {
+            N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).intValue();
+        }
+
+        // System.out.println("statistics \n" + Statistics);
+        System.out.println("Best Solution: " + result.getBestPhenotype());
+        System.out.println("GAModel Cost: " + N/M);
 
     }
 }

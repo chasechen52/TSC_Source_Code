@@ -160,6 +160,7 @@ public class ECGreedyVoteModel {
         int best_pn = 2; //最低cost对应的数据块数
         List<Integer> MinCostServerList = new ArrayList<>();
         int mindeg = getMapMinValue(mDegrees);
+        // 划分的数据块数
         for (int m = 1; m <= mindeg; ++m)
         {
             initDataPacketsNeed(m); //初始化mDataPacketsNeed
