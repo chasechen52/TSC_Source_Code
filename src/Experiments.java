@@ -635,7 +635,7 @@ public class Experiments {
     }
 
     private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 50;
+        int serverNumber = 10;
         double d = 2;
         int h = 1;
         int population = 100;
