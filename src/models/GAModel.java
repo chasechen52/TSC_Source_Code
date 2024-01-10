@@ -52,6 +52,7 @@ public class GAModel {
                 // System.out.print(mAccessMatrix[i][j] + ",");
             }
             // System.out.println();
+            // System.out.println("mDegrees :" + i + " " + access);
             mDegrees.put(i, access); // access为广义上的度
         }
         // System.out.println("各节点度数：" + mDegrees);
@@ -113,6 +114,15 @@ public class GAModel {
         return false;
     }
 
+    // 计算染色体中1的个数
+    private static int countOnesInBitChromosome(BitChromosome bitChromosome) {
+        // 将 BitChromosome 转换为 BitSet
+        BitSet bitSet = BitSet.valueOf(bitChromosome.toByteArray());
+
+        // 使用 cardinality 方法计算 BitSet 中为1的位数
+        return bitSet.cardinality();
+    }
+
     // 染色体初始化
     private static BitSet generateDataPlacementBitSet(int seversNumber, int minDegree, int degreeDistance) {
         // 生成一个BitSet
@@ -120,11 +130,13 @@ public class GAModel {
         // 归一化概率
         mDegrees.forEach((key, value) -> {
             // 每个位置放置数据的归一化概率
-            int probability = value - minDegree / degreeDistance;
+            double probability = (double) (value - minDegree) / degreeDistance;
+            // System.out.print("value probability :" + (value - minDegree) + ", " + value  +", " + minDegree  +", " + probability + "\n");
             // 依照归一化概率放入0或1
             if (Math.random() < probability) bitSet.set(key);
 
         });
+        System.out.println();
         return bitSet;
     }
 
@@ -151,10 +163,18 @@ public class GAModel {
 
     // Define the fitness function
     private static double fitness(Genotype<BitGene> PLSolution) {
-        Chromosome<BitGene> M_number_chromosome = PLSolution.getChromosome(0);
-        Chromosome<BitGene> data_placement_chromosome = PLSolution.getChromosome(1);
-        int N_DataNumber = 0;
-        int M_chunkNumber = M_number_chromosome.getGene(0).intValue();
+        BitChromosome chunk_number_chromosome = (BitChromosome) PLSolution.getChromosome(0);
+        BitChromosome data_placement_chromosome = (BitChromosome) PLSolution.getChromosome(1);
+        // Chromosome<BitGene> data_placement_chromosome2 =  ((BitChromosome) PLSolution.getChromosome(1)).ones()
+
+        // System.out.println("chunk_number_chromosome:  " + chunk_number_chromosome);
+        // System.out.println("data_placement_chromosome:  " + data_placement_chromosome);
+        // System.out.println("----------------");
+
+        int N_DataNumber = countOnesInBitChromosome(data_placement_chromosome);
+        // System.out.println("N_DataNumber:  "+ N_DataNumber);
+        // System.out.println("----------------");
+        int M_chunkNumber = chunk_number_chromosome.intValue();
         // double smoothingFactor = 1;  // 平滑项，可为其他适当的小数值
         // double penaltyValue = 100; // 惩罚项
         double fitness;
@@ -166,10 +186,10 @@ public class GAModel {
 
         // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
         // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
-        for (int i = 0; i < TotalNumberOfSevers; i++) {
-            N_DataNumber += data_placement_chromosome.getGene(i).intValue();
-            dataBenefit += data_placement_chromosome.getGene(i).intValue() * mDegrees.get(i);
-        }
+        // for (int i = 0; i < TotalNumberOfSevers; i++) {
+        //     N_DataNumber += data_placement_chromosome.getGene(i).intValue();
+        //     dataBenefit += data_placement_chromosome.getGene(i).intValue() * mDegrees.get(i);
+        // }
         if (N_DataNumber < M_chunkNumber) {
             // 如果总数据块不够则直接判定不可行
             isFeasibleSolution = false;
@@ -179,7 +199,7 @@ public class GAModel {
                 int mRequired = M_chunkNumber;
                 for (int j = 0; j < TotalNumberOfSevers; j++) {
                     boolean canAccess = mAccessMatrix[i][j] == 1;
-                    boolean hasData = data_placement_chromosome.getGene(j).intValue() == 1;
+                    boolean hasData = data_placement_chromosome.getGene(j).getBit();
                     if (canAccess && hasData) --mRequired;
                     if (mRequired == 0) break;
                 }
@@ -213,22 +233,26 @@ public class GAModel {
         int maxDegree = getMapMaxValue(mDegrees);
         int minDegree = getMapMinValue(mDegrees);
         int degreeDistance = maxDegree - minDegree;
+        // System.out.println("degreeDistance: " + degreeDistance);
         BitSet data_place_bitSet = generateDataPlacementBitSet(serverNumber, minDegree, degreeDistance);
         BitSet chunk_number_bitSet = generateChunkNumberBitset(maxDegree);
 
         BitChromosome data_placement_chromosome = BitChromosome.of(data_place_bitSet);
-        BitChromosome M_number_chromosome = BitChromosome.of(chunk_number_bitSet);
+        BitChromosome chunk_number_chromosome = BitChromosome.of(chunk_number_bitSet);
 
-        Genotype<BitGene> PLSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
+        Genotype<BitGene> PLSolution = Genotype.of(chunk_number_chromosome, data_placement_chromosome);
 
-        System.out.println("PLSolution" + PLSolution);
+        System.out.println("PLSolution: " + PLSolution);
+        System.out.println("chunk_number_chromosome: " + chunk_number_chromosome.intValue());
+        System.out.println("data_placement_chromosome: " + data_placement_chromosome);
+
 
         Engine<BitGene, Double> engine = Engine.builder(GAModel::fitness, PLSolution)
                 .populationSize(population)
                 .offspringFraction(0.8)
                 .survivorsFraction(0.2)
                 .selector(new TournamentSelector<>()) // 选择
-                .alterers(new Mutator<>(0.2))  // 变异概率0.2
+                .alterers(new SinglePointCrossover<>(0.5), new Mutator<>(0.1))
                 .build();
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
@@ -237,15 +261,17 @@ public class GAModel {
                 .limit(Limits.bySteadyFitness(50))
                 .peek(Statistics)
                 .collect(EvolutionResult.toBestEvolutionResult());
+        //
+        // Chromosome<BitGene> M = result.getBestPhenotype().getGenotype().getChromosome(0);
+        // Chromosome<BitGene> N = result.getBestPhenotype().getGenotype().getChromosome(1);
 
-        double M = result.getBestPhenotype().getGenotype().getChromosome(0).getGene(0).intValue();
-        double N = 0;
-        for (int i = 0; i < data_placement_chromosome.length(); i++) {
-            N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).intValue();
-        }
-
-        System.out.println("Best Solution: " + result.getBestPhenotype());
-        System.out.println("GAModel Cost: " + N / M);
+        // double N = 0;
+        // for (int i = 0; i < data_placement_chromosome.length(); i++) {
+        //     N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).intValue();
+        // }
+        //
+        // System.out.println("Best Solution: " + result.getBestPhenotype());
+        // System.out.println("GAModel Cost: " + N / M);
 
     }
 }
