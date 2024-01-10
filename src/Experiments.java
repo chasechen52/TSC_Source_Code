@@ -124,27 +124,44 @@ public class Experiments {
         int[][] adjacencyMatrix = graphGenerator.getRandomGraphAdjacencyMatrix();
         int[][] distanceMatrics = graphGenerator.getRandomGraphDistanceMatrix();
 
-        // int [][] distanceMatrics = new int [][]
-        // {
-        // 	{0,2,2,2,2,2,2,2,1,1},
-        // 	{2,0,2,2,2,2,2,2,1,1},
-        // 	{2,2,0,2,2,2,2,2,1,1},
-        // 	{2,2,2,0,2,2,2,2,1,1},
-        // 	{2,2,2,2,0,2,2,2,1,1},
-        // 	{2,2,2,2,2,0,2,2,1,1},
-        // 	{2,2,2,2,2,2,0,2,1,1},
-        // 	{2,2,2,2,2,2,2,0,1,1},
-        // 	{1,1,1,1,1,1,1,1,0,1},
-        // 	{1,1,1,1,1,1,1,1,1,0},
-
+        // int[][] adjacencyMatrix = {
+        //         {0, 1, 0, 0, 0, 1, 0, 0, 1, 0},
+        //         {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        //         {0, 0, 0, 1, 0, 0, 1, 1, 0, 0},
+        //         {0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+        //         {0, 0, 0, 0, 0, 0, 0, 1, 1, 0},
+        //         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        //         {0, 0, 1, 0, 0, 0, 0, 0, 0, 1},
+        //         {0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
+        //         {1, 0, 0, 0, 1, 0, 0, 0, 0, 0},
+        //         {0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
+        // };
+        //
+        // int[][] distanceMatrics = {
+        //         {0, 1, 4, 5, 2, 1, 3, 3, 1, 2},
+        //         {1, 0, 3, 4, 3, 2, 2, 4, 2, 1},
+        //         {4, 3, 0, 1, 2, 5, 1, 1, 3, 2},
+        //         {5, 4, 1, 0, 3, 6, 2, 2, 4, 3},
+        //         {2, 3, 2, 3, 0, 3, 3, 1, 1, 4},
+        //         {1, 2, 5, 6, 3, 0, 4, 4, 2, 3},
+        //         {3, 2, 1, 2, 3, 4, 0, 2, 4, 1},
+        //         {3, 4, 1, 2, 1, 4, 2, 0, 2, 3},
+        //         {1, 2, 3, 4, 1, 2, 4, 2, 0, 3},
+        //         {2, 1, 2, 3, 4, 3, 1, 3, 3, 0},
         // };
 
 
-        System.out.println("\n------- AdjMatrix -------"); // 打印邻接矩阵方便绘图
-        for (int i = 0; i < serversNumber; ++i) {
-            System.out.println(Arrays.toString(adjacencyMatrix[i]) + ",");
-        }
-        System.out.println("\n");
+        // System.out.println("\n------- AdjMatrix -------"); // 打印邻接矩阵方便绘图
+        // for (int i = 0; i < serversNumber; ++i) {
+        //     System.out.println(Arrays.toString(adjacencyMatrix[i]) + ",");
+        // }
+        // System.out.println("\n");
+        //
+        // System.out.println("\n------- distanceMatrics -------"); // 打印邻接矩阵方便绘图
+        // for (int i = 0; i < serversNumber; ++i) {
+        //     System.out.println(Arrays.toString(distanceMatrics[i]) + ",");
+        // }
+        // System.out.println("\n");
 
         return distanceMatrics;
     }
@@ -164,7 +181,7 @@ public class Experiments {
 
     private static void runExample() throws ClassNotFoundException, IOException {
         int s = 10;
-        double d = 1;
+        double d = 2;
         int h = 3;
         while (true) {
             int[][] dism = GraphGenerate(s, d);
@@ -618,26 +635,30 @@ public class Experiments {
     }
 
     private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 24;
-        double d = 1;
-        int h = 3;
+        int serverNumber = 50;
+        double d = 2;
+        int h = 1;
         int population = 100;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
             runGACost(population, serverNumber);
             if (mGACost <= mReplicaCost * 0.75) {
-                System.out.println("Replica:" + mReplicaCost + "  " + mReplicaServers);
-                System.out.println("Genetic Algorithm:" + mGACost + "  " + mGAServers);
+                System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
                 break;
             }
+
         }
     }
 
     public static void runGACost(int population, int serverNumber) {
+        // mGACost = mGAModel.getmGACost();
         long start = System.currentTimeMillis();
         mGAModel.runGACost(population, serverNumber);
         long end = System.currentTimeMillis();
+
+        System.out.println("\nGAModel");
+        System.out.println("Time:" + (end-start) + " ms");
     }
 
     private static void runECGreedyVoteCost() throws ClassNotFoundException, IOException {
@@ -705,7 +726,7 @@ public class Experiments {
         long end = System.currentTimeMillis();
         // double duration = (double) (Duration.between(start, end).toMillis());
         // System.out.println("Time:" + (end-start) + " ms");
-        // System.out.println("mECCplexPacketsNeeds:" + best_pn);
+        System.out.println("mECCplexPacketsNeeds:" + best_pn);
         // System.out.println("mECCplexCost:" + mECCplexCost);
         // System.out.println("mECCplexServers:" + mECCplexServers + "\n");
     }
