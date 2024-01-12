@@ -6,8 +6,11 @@ import sun.plugin2.os.windows.OSVERSIONINFOA;
 
 import java.io.*;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class GAModel {
+
+    private static final Logger logger = Logger.getLogger(GAModel.class.getName());
 
     private static int mServersNumber;   // 服务器数量
     private static int[][] mAccessMatrix;   // 可访问矩阵,初始为全0矩阵
@@ -136,12 +139,14 @@ public class GAModel {
             if (Math.random() < probability) bitSet.set(key);
 
         });
-        System.out.println();
-        System.out.println("BitSet:  " + bitSet);
+        // 防止最后 8 位全部是0，导致染色体位数减少。
+        bitSet.set(mServersNumber);
+        // System.out.println();
+        // System.out.println("BitSet:  " + bitSet);
         return bitSet;
     }
 
-    public static BitSet generateChunkNumberBitset(int maxDegree){
+    public static BitSet generateChunkNumberBitset(int maxDegree) {
         int chunkNumber = new Random().nextInt(maxDegree - 1) + 2;
         String binaryNumber = Integer.toBinaryString(chunkNumber);
         return binaryStringToBitSet(binaryNumber);
@@ -166,6 +171,7 @@ public class GAModel {
     private static double fitness(Genotype<BitGene> PLSolution) {
         BitChromosome chunk_number_chromosome = (BitChromosome) PLSolution.getChromosome(0);
         BitChromosome data_placement_chromosome = (BitChromosome) PLSolution.getChromosome(1);
+        // System.out.println(" 1111    " + data_placement_chromosome.length());
         // Chromosome<BitGene> data_placement_chromosome2 =  ((BitChromosome) PLSolution.getChromosome(1)).ones()
 
         // System.out.println("chunk_number_chromosome:  " + chunk_number_chromosome);
@@ -175,7 +181,7 @@ public class GAModel {
         int N = countOnesInBitChromosome(data_placement_chromosome);
         // System.out.println("N:  "+ N);
         // System.out.println("----------------");
-        int M = chunk_number_chromosome.bitCount();
+        int M = chunk_number_chromosome.intValue();
         // double smoothingFactor = 1;  // 平滑项，可为其他适当的小数值
         // double penaltyValue = 100; // 惩罚项
         double fitness;
@@ -197,13 +203,22 @@ public class GAModel {
             // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
             for (int i = 0; i < mServersNumber; i++) {
                 int mRequired = M;
+                // try {
                 for (int j = 0; j < mServersNumber; j++) {
                     boolean canAccess = mAccessMatrix[i][j] == 1;
                     // System.out.println("j: " + j);
+                    // System.out.println("data_placement_chromosome.getGene(j)   " + data_placement_chromosome + " " + j);
                     boolean hasData = data_placement_chromosome.getGene(j).booleanValue();
                     if (canAccess && hasData) --mRequired;
                     if (mRequired == 0) break;
                 }
+
+                // } catch (IndexOutOfBoundsException e) {
+                //     // 记录异常信息到日志
+                //     logger.severe("Index out of bounds: " + e.getMessage());
+                //     System.out.println("data_placement_chromosome" + data_placement_chromosome.length());
+                // }
+
                 if (mRequired > 0) {
                     isFeasibleSolution = false;
                     ++numberOfSeversLackingData;
@@ -215,18 +230,18 @@ public class GAModel {
         }
         dataCost = -((double) N / M);
         // 适应度：å成本 + ß是否可行解
-        double a = 1;
-        double b = 100;
+        // double a = 1;
+        // double b = 100;
+        double c = 500;
         double adaptationValue = N * (1 + (double) 1 / M);
-        double penaltyValue = numberOfSeversLackingData / mServersNumber;
-        // double c = 200;
+        double penaltyValue = c * numberOfSeversLackingData / mServersNumber;
         // System.out.println("isFeasibleSolution  "+ isFeasibleSolution);
 
         fitness = adaptationValue + penaltyValue;
         if (isFeasibleSolution) {
             System.out.println("可行解： " + M + ", " + data_placement_chromosome);
         }
-        return fitness;
+        return -fitness;
     }
 
     public void runGACost(int population) {
@@ -271,7 +286,7 @@ public class GAModel {
         for (int i = 0; i < data_placement_chromosome.length(); i++) {
             N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).getBit() ? 1 : 0;
         }
-        double M = chunk_number_chromosome.bitCount();
+        double M = chunk_number_chromosome.intValue();
         //
         System.out.println("Best Solution: " + result.getBestPhenotype());
         System.out.println("N: " + N + "   M: " + M);
