@@ -635,26 +635,27 @@ public class Experiments {
     }
 
     private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 10;
+        int serverNumber = 20;
         double d = 2;
         int h = 1;
         int population = 100;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
-            runGACost(population, serverNumber);
-            if (mGACost <= mReplicaCost * 0.75) {
-                System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
+            runGACost(population);
+            runECGreedyVoteCost();
+            // if (mGACost <= mReplicaCost * 0.75) {
+            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
                 break;
-            }
+            // }
 
         }
     }
 
-    public static void runGACost(int population, int serverNumber) {
+    public static void runGACost(int population) {
         // mGACost = mGAModel.getmGACost();
         long start = System.currentTimeMillis();
-        mGAModel.runGACost(population, serverNumber);
+        mGAModel.runGACost(population);
         long end = System.currentTimeMillis();
 
         System.out.println("\nGAModel");
@@ -674,10 +675,10 @@ public class Experiments {
 
 
         // System.out.println("\nECGreedyVoteModel");
-        // System.out.println("Time:" + (end-start) + " ms");
+        System.out.println("Time:" + (end-start) + " ms");
         // System.out.println("mECGreedyVotePacketsNeeds:" + packetsNeed);
-        // System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
-        // System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
+        System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
+        System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
     }
 
     public static <T> List<T> deepCopy(List<T> src) throws IOException, ClassNotFoundException {

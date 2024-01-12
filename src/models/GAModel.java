@@ -9,7 +9,7 @@ import java.util.*;
 
 public class GAModel {
 
-    private int mServersNumber;   // 服务器数量
+    private static int mServersNumber;   // 服务器数量
     private static int[][] mAccessMatrix;   // 可访问矩阵,初始为全0矩阵
     private int[][] mDistanceMatrix;  // 最短距离矩阵
     private int mhops;     // 允许的跳数
@@ -124,9 +124,9 @@ public class GAModel {
     }
 
     // 染色体初始化
-    private static BitSet generateDataPlacementBitSet(int seversNumber, int minDegree, int degreeDistance) {
+    private static BitSet generateDataPlacementBitSet(int minDegree, int degreeDistance) {
         // 生成一个BitSet
-        BitSet bitSet = new BitSet(seversNumber);
+        BitSet bitSet = new BitSet(mServersNumber);
         // 归一化概率
         mDegrees.forEach((key, value) -> {
             // 每个位置放置数据的归一化概率
@@ -137,6 +137,7 @@ public class GAModel {
 
         });
         System.out.println();
+        System.out.println("BitSet:  " + bitSet);
         return bitSet;
     }
 
@@ -171,35 +172,35 @@ public class GAModel {
         // System.out.println("data_placement_chromosome:  " + data_placement_chromosome);
         // System.out.println("----------------");
 
-        int N_DataNumber = countOnesInBitChromosome(data_placement_chromosome);
-        // System.out.println("N_DataNumber:  "+ N_DataNumber);
+        int N = countOnesInBitChromosome(data_placement_chromosome);
+        // System.out.println("N:  "+ N);
         // System.out.println("----------------");
-        int M_chunkNumber = chunk_number_chromosome.intValue();
+        int M = chunk_number_chromosome.bitCount();
         // double smoothingFactor = 1;  // 平滑项，可为其他适当的小数值
         // double penaltyValue = 100; // 惩罚项
         double fitness;
         boolean isFeasibleSolution = true;
         double dataCost;
         int dataBenefit = 0;
-        int numberOfSeversLackingData = 0;
-        int TotalNumberOfSevers = data_placement_chromosome.length();
+        double numberOfSeversLackingData = 0;
 
         // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
         // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
         // for (int i = 0; i < TotalNumberOfSevers; i++) {
-        //     N_DataNumber += data_placement_chromosome.getGene(i).intValue();
+        //     N += data_placement_chromosome.getGene(i).intValue();
         //     dataBenefit += data_placement_chromosome.getGene(i).intValue() * mDegrees.get(i);
         // }
-        if (N_DataNumber < M_chunkNumber) {
+        if (N < M) {
             // 如果总数据块不够则直接判定不可行
             isFeasibleSolution = false;
         } else {
             // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
-            for (int i = 0; i < TotalNumberOfSevers; i++) {
-                int mRequired = M_chunkNumber;
-                for (int j = 0; j < TotalNumberOfSevers; j++) {
+            for (int i = 0; i < mServersNumber; i++) {
+                int mRequired = M;
+                for (int j = 0; j < mServersNumber; j++) {
                     boolean canAccess = mAccessMatrix[i][j] == 1;
-                    boolean hasData = data_placement_chromosome.getGene(j).getBit();
+                    // System.out.println("j: " + j);
+                    boolean hasData = data_placement_chromosome.getGene(j).booleanValue();
                     if (canAccess && hasData) --mRequired;
                     if (mRequired == 0) break;
                 }
@@ -212,29 +213,30 @@ public class GAModel {
                 // System.out.println(mRequired);
             }
         }
-        dataCost = -((double) N_DataNumber / M_chunkNumber);
+        dataCost = -((double) N / M);
         // 适应度：å成本 + ß是否可行解
         double a = 1;
         double b = 100;
+        double adaptationValue = N * (1 + (double) 1 / M);
+        double penaltyValue = numberOfSeversLackingData / mServersNumber;
         // double c = 200;
         // System.out.println("isFeasibleSolution  "+ isFeasibleSolution);
 
-        double isFeasibleSolutionValue = (double) numberOfSeversLackingData / TotalNumberOfSevers;
-        fitness = a * dataCost + b * isFeasibleSolutionValue;
+        fitness = adaptationValue + penaltyValue;
         if (isFeasibleSolution) {
-            System.out.println("Solution： " + M_chunkNumber + ", " + data_placement_chromosome);
+            System.out.println("可行解： " + M + ", " + data_placement_chromosome);
         }
         return fitness;
     }
 
-    public void runGACost(int population, int serverNumber) {
+    public void runGACost(int population) {
         // 首先进行矩阵转化，计算度
         ConvertDistoAccAndCalDegree();
         int maxDegree = getMapMaxValue(mDegrees);
         int minDegree = getMapMinValue(mDegrees);
         int degreeDistance = maxDegree - minDegree;
         // System.out.println("degreeDistance: " + degreeDistance);
-        BitSet data_place_bitSet = generateDataPlacementBitSet(serverNumber, minDegree, degreeDistance);
+        BitSet data_place_bitSet = generateDataPlacementBitSet(minDegree, degreeDistance);
         BitSet chunk_number_bitSet = generateChunkNumberBitset(maxDegree);
 
         BitChromosome data_placement_chromosome = BitChromosome.of(data_place_bitSet);
@@ -265,13 +267,15 @@ public class GAModel {
         // Chromosome<BitGene> M = result.getBestPhenotype().getGenotype().getChromosome(0);
         // Chromosome<BitGene> N = result.getBestPhenotype().getGenotype().getChromosome(1);
 
-        // double N = 0;
-        // for (int i = 0; i < data_placement_chromosome.length(); i++) {
-        //     N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).intValue();
-        // }
+        double N = 0;
+        for (int i = 0; i < data_placement_chromosome.length(); i++) {
+            N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).getBit() ? 1 : 0;
+        }
+        double M = chunk_number_chromosome.bitCount();
         //
-        // System.out.println("Best Solution: " + result.getBestPhenotype());
-        // System.out.println("GAModel Cost: " + N / M);
+        System.out.println("Best Solution: " + result.getBestPhenotype());
+        System.out.println("N: " + N + "   M: " + M);
+        System.out.println("GAModel Cost: " + N / M);
 
     }
 }
