@@ -9,7 +9,7 @@ import java.util.*;
 
 public class GAModel {
 
-    private int mServersNumber;   // 服务器数量
+    private static int mServersNumber;   // 服务器数量
     private static int[][] mAccessMatrix;   // 可访问矩阵,初始为全0矩阵
     private int[][] mDistanceMatrix;  // 最短距离矩阵
     private int mhops;     // 允许的跳数
@@ -75,9 +75,8 @@ public class GAModel {
     public static int getMapMaxValueKey(Map<Integer, Integer> map)  // 取出最大value对应的Key值,Int
     {
         List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(map.entrySet());
-        Collections.sort(list, (o1, o2) -> (o1.getValue().intValue() - o2.getValue().intValue()));
-        int key = list.get(list.size() - 1).getKey();
-        return key;
+        list.sort(Comparator.comparingInt(Map.Entry::getValue));
+        return list.get(list.size() - 1).getKey();
     }
 
     public int getMapMaxValue(Map<Integer, Integer> maps)  // 取出最小value
@@ -85,11 +84,11 @@ public class GAModel {
         Comparator<Map.Entry<Integer, Integer>> valCmp = new Comparator<Map.Entry<Integer, Integer>>() {
             @Override
             public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return o2.getValue().intValue() - o1.getValue().intValue();  // 升序排序
+                return o2.getValue() - o1.getValue();  // 升序排序
             }
         };
         List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(maps.entrySet()); // 传入maps实体
-        Collections.sort(list, valCmp);
+        list.sort(valCmp);
 
         return list.get(0).getValue();
     }
@@ -100,11 +99,11 @@ public class GAModel {
         Comparator<Map.Entry<Integer, Integer>> valCmp = new Comparator<Map.Entry<Integer, Integer>>() {
             @Override
             public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return o1.getValue().intValue() - o2.getValue().intValue();  // 升序排序
+                return o1.getValue() - o2.getValue();  // 升序排序
             }
         };
         List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(maps.entrySet()); // 传入maps实体
-        Collections.sort(list, valCmp);
+        list.sort(valCmp);
 
         return list.get(0).getValue();
     }
@@ -132,29 +131,28 @@ public class GAModel {
     private static double fitness(Genotype<IntegerGene> PLSolution) {
         Chromosome<IntegerGene> M_number_chromosome = PLSolution.getChromosome(0);
         Chromosome<IntegerGene> data_placement_chromosome = PLSolution.getChromosome(1);
-        int N_DataNumber = 0;
-        int M_chunkNumber = M_number_chromosome.getGene(0).intValue();
-        // double smoothingFactor = 1;  // 平滑项，可为其他适当的小数值
-        // double penaltyValue = 100; // 惩罚项
+        double N = 0;
+        int M = M_number_chromosome.getGene(0).intValue();
         double fitness;
         boolean isFeasibleSolution = true;
-        double dataCost;
-        int dataBenefit = 0;
+        int dataCost;
+        // int dataBenefit = 1;
+        int seversWithoutEnoughData = 0;
 
         // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
         // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
-        for (int i = 0; i < data_placement_chromosome.length(); i++) {
-            N_DataNumber += data_placement_chromosome.getGene(i).intValue();
-            dataBenefit += data_placement_chromosome.getGene(i).intValue() * mDegrees.get(i);
+        for (int i = 0; i < mServersNumber; i++) {
+            N += data_placement_chromosome.getGene(i).intValue();
+            // dataBenefit += data_placement_chromosome.getGene(i).intValue() * mDegrees.get(i);
         }
-        if (N_DataNumber < M_chunkNumber) {
+        if (N < M) {
             // 如果总数据块不够则直接判定不可行
             isFeasibleSolution = false;
         } else {
             // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
-            for (int i = 0; i < data_placement_chromosome.length(); i++) {
-                int mRequired = M_chunkNumber;
-                for (int j = 0; j < data_placement_chromosome.length(); j++) {
+            for (int i = 0; i < mServersNumber; i++) {
+                int mRequired = M;
+                for (int j = 0; j < mServersNumber; j++) {
                     boolean canAccess = mAccessMatrix[i][j] == 1;
                     boolean hasData = data_placement_chromosome.getGene(j).intValue() == 1;
                     if (canAccess && hasData) --mRequired;
@@ -162,24 +160,37 @@ public class GAModel {
                 }
                 if (mRequired > 0) {
                     isFeasibleSolution = false;
+                    ++seversWithoutEnoughData;
                     break;
+
                 }
                 // System.out.println(isFeasibleSolution);
                 // System.out.println(mRequired);
             }
         }
-        dataCost = -((double) N_DataNumber / M_chunkNumber);
+        // dataCost = -N;
         // 适应度：å数据增益 + ß成本 + ∂是否可行解
         double a = 1;
-        double b = 5.5;
-        double c = 200;
-        double isFeasibleSolutionValue = isFeasibleSolution ? 1 : -1;
-        fitness = a * dataBenefit + b * dataCost + c * isFeasibleSolutionValue;
+        // double b = 2.5;
+        // double c = 1;
+
+        double b = 500;
+        // double isFeasibleSolutionValue = isFeasibleSolution ? 1 : -1;
+        // dataBenefit = 1 / dataBenefit;
+        // double adaptationItem = a * dataCost + b * N + c *  1 / M;
+        // 适应项：
+        double adaptationItem = a * N * (1 + (double) 1 / M);
+        // 惩罚项：不可行的节点数 / 总服务器数
+        double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
+        fitness = adaptationItem + penaltyItem;
         if (isFeasibleSolution) {
-            System.out.println("Solution： " + M_chunkNumber + "," + data_placement_chromosome);
+            System.out.println("可行解： " + "M=" +M + ",  数据分布：" + data_placement_chromosome);
         }
-        return fitness;
+        return -fitness;
     }
+    // 为1的度取倒数 1/k ，度的倒数之和相加
+    // 整个演化过程
+    // 最优解和其他解的区别
 
     public void runGACost(int population, int serverNumber) {
         // 首先进行矩阵转化，计算度
@@ -204,7 +215,7 @@ public class GAModel {
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
 
         EvolutionResult<IntegerGene, Double> result = engine.stream()
-                .limit(Limits.bySteadyFitness(50))
+                .limit(Limits.bySteadyFitness(100))
                 .peek(Statistics)
                 .collect(EvolutionResult.toBestEvolutionResult());
 

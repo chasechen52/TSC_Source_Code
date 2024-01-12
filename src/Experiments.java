@@ -635,18 +635,21 @@ public class Experiments {
     }
 
     private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 50;
+        int serverNumber = 20;
         double d = 2;
         int h = 1;
-        int population = 100;
+        int population = 200;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
             runGACost(population, serverNumber);
-            if (mGACost <= mReplicaCost * 0.75) {
-                System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
-                break;
-            }
+            runECGreedyVoteCost();
+            // runECCplexCost();
+            break;
+            // if (mGACost <= mReplicaCost * 0.75) {
+            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
+            //     break;
+            // }
 
         }
     }
@@ -657,8 +660,9 @@ public class Experiments {
         mGAModel.runGACost(population, serverNumber);
         long end = System.currentTimeMillis();
 
-        System.out.println("\nGAModel");
+        // System.out.println("\nGAModel");
         System.out.println("Time:" + (end-start) + " ms");
+        System.out.println();
     }
 
     private static void runECGreedyVoteCost() throws ClassNotFoundException, IOException {
@@ -674,10 +678,10 @@ public class Experiments {
 
 
         // System.out.println("\nECGreedyVoteModel");
-        // System.out.println("Time:" + (end-start) + " ms");
+        System.out.println("Time:" + (end-start) + " ms");
         // System.out.println("mECGreedyVotePacketsNeeds:" + packetsNeed);
-        // System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
-        // System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
+        System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
+        System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
     }
 
     public static <T> List<T> deepCopy(List<T> src) throws IOException, ClassNotFoundException {
@@ -725,10 +729,10 @@ public class Experiments {
         mECCplexServers = mincostServers;
         long end = System.currentTimeMillis();
         // double duration = (double) (Duration.between(start, end).toMillis());
-        // System.out.println("Time:" + (end-start) + " ms");
-        System.out.println("mECCplexPacketsNeeds:" + best_pn);
-        // System.out.println("mECCplexCost:" + mECCplexCost);
-        // System.out.println("mECCplexServers:" + mECCplexServers + "\n");
+        System.out.println("Time:" + (end-start) + " ms");
+        // System.out.println("mECCplexPacketsNeeds:" + best_pn);
+        System.out.println("mECCplexCost:" + mECCplexCost);
+        System.out.println("mECCplexServers:" + mECCplexServers + "\n");
     }
 
     private static void runECGreedyDegreeCost() throws ClassNotFoundException, IOException {
