@@ -174,7 +174,7 @@ public class GAModel {
         // double b = 2.5;
         // double c = 1;
 
-        double b = 500;
+        double b = 1000;
         // double isFeasibleSolutionValue = isFeasibleSolution ? 1 : -1;
         // dataBenefit = 1 / dataBenefit;
         // double adaptationItem = a * dataCost + b * N + c *  1 / M;

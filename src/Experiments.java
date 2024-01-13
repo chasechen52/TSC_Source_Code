@@ -638,7 +638,7 @@ public class Experiments {
         int serverNumber = 20;
         double d = 2;
         int h = 1;
-        int population = 200;
+        int population = 100;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
