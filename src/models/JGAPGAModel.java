@@ -124,7 +124,13 @@ public class JGAPGAModel {
             double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
             fitness = adaptationItem + penaltyItem;
             if (isFeasibleSolution) {
-                // System.out.println("可行解： " + "M=" +M + ",  数据分布：" + strategy_chromosome);
+                ArrayList<Integer> GAServerList = new ArrayList<>();
+                for (int i = 0; i < strategy_chromosome.getGenes().length; i++) {
+                    Gene gene = strategy_chromosome.getGene(i);
+                    int GAServer = (int) gene.getAllele();
+                    GAServerList.add(GAServer);
+                }
+                System.out.println("GAServerList" + GAServerList);
             }
             return 1 / fitness;
             // return 0;
@@ -141,13 +147,15 @@ public class JGAPGAModel {
 
         IChromosome[] cplex_solution_chromosome_list = new IChromosome[cplexSolutionList.size()];
 
-        for (int i = 0; i < cplex_solution_chromosome_list.length; i++) {
+        for (int i = 1; i < cplex_solution_chromosome_list.length; i++) {
             List solution = cplexSolutionList.get(i);
             Gene[] genes = new Gene[serverNumber + 1];
             for (int j = 0; j < serverNumber + 1; j++) {
                 if (j == 0) {
-                    genes[j] = new IntegerGene(configuration, 1, getMapMinValue(mDegrees));
+                    genes[j] = new IntegerGene(configuration, 2, getMapMinValue(mDegrees));
                     genes[j].setAllele(i+1);
+                    System.out.println("cplex_solution_chromosome_list: " + cplexSolutionList);
+                    System.out.println("genes[j]" + genes[j]);
                 } else {
                     genes[j] = new IntegerGene(configuration, 0, 1);
                     genes[j].setAllele(0);
@@ -171,7 +179,7 @@ public class JGAPGAModel {
 
         // 创建复合基因并将两个基因合并成一个染色体
         for (int i = 0; i < genes.length; i++) {
-            if (i == 0) genes[i] = new IntegerGene(configuration, 1, getMapMinValue(mDegrees));
+            if (i == 0) genes[i] = new IntegerGene(configuration, 2, getMapMinValue(mDegrees));
             else genes[i] = new IntegerGene(configuration, 0, 1);
         }
 
@@ -188,10 +196,10 @@ public class JGAPGAModel {
         // 设置演化方式为锦标赛选择
         int tournamentSize = 2; // 锦标赛的大小
         TournamentSelector selectionMethod = new TournamentSelector(configuration, tournamentSize, 0.8);
-        configuration.addNaturalSelector(selectionMethod, true);
+        configuration.addNaturalSelector(selectionMethod,false);
 
         // 设置变异概率为0.2
-        int mutationRate = 80;
+        int mutationRate = 20;
         MutationOperator mutationOperator = new MutationOperator(configuration, mutationRate);
         configuration.addGeneticOperator(mutationOperator);
 
@@ -229,6 +237,15 @@ public class JGAPGAModel {
 
         // 打印最优染色体的基因值
         System.out.println("mGACost: " + cost);
+        // System.out.println("mGAServers: " + Arrays.toString(fittestChromosome.));
+        ArrayList<Integer> GAServerList = new ArrayList<>();
+        for (int i = 0; i < fittestChromosome.getGenes().length; i++) {
+            Gene gene = fittestChromosome.getGene(i);
+            int GAServer = (int) gene.getAllele();
+            GAServerList.add(GAServer);
+        }
+        System.out.println("m:  " + fittestChromosome.getGene(0));
+        System.out.println("GAServerList" + GAServerList);
     }
 }
 
