@@ -655,7 +655,7 @@ public class Experiments {
         int serverNumber = 20;
         double d = 2;
         int h = 1;
-        int population = 100;
+        int population = 80;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
@@ -792,9 +792,9 @@ public class Experiments {
             //     mReplicaServers = intermedia_replica;
             //     // System.out.println("Replica:" + CplexCurServers + " cost:" + cur_cost);
             // }
-            // if (packetsNeed >= 2) {
-            //     // System.out.println(packetsNeed + ":" + CplexCurServers + " cost:" + cur_cost);
-            // }
+            if (packetsNeed >= 2) {
+                System.out.println(packetsNeed + ":" + CplexSolutionList + " cost:" + cur_cost);
+            }
             // if (packetsNeed >= 2 && cur_cost < min_cost) {
             //     min_cost = cur_cost;
             //     best_pn = packetsNeed;

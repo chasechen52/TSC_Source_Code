@@ -1,10 +1,12 @@
 package models;
 
-import io.jenetics.IntegerChromosome;
 import org.jgap.*;
 import org.jgap.impl.DefaultConfiguration;
 import org.jgap.impl.IntegerGene;
+import org.jgap.impl.MutationOperator;
+import org.jgap.impl.TournamentSelector;
 
+import java.nio.channels.Selector;
 import java.util.*;
 
 
@@ -122,7 +124,7 @@ public class JGAPGAModel {
             double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
             fitness = adaptationItem + penaltyItem;
             if (isFeasibleSolution) {
-                System.out.println("可行解： " + "M=" +M + ",  数据分布：" + strategy_chromosome);
+                // System.out.println("可行解： " + "M=" +M + ",  数据分布：" + strategy_chromosome);
             }
             return 1 / fitness;
             // return 0;
@@ -183,6 +185,16 @@ public class JGAPGAModel {
         FitnessFunction fitnessFunction = new MyFitnessFunction();
         configuration.setFitnessFunction(fitnessFunction);
 
+        // 设置演化方式为锦标赛选择
+        int tournamentSize = 2; // 锦标赛的大小
+        TournamentSelector selectionMethod = new TournamentSelector(configuration, tournamentSize, 0.8);
+        configuration.addNaturalSelector(selectionMethod, true);
+
+        // 设置变异概率为0.2
+        int mutationRate = 80;
+        MutationOperator mutationOperator = new MutationOperator(configuration, mutationRate);
+        configuration.addGeneticOperator(mutationOperator);
+
 
         // 使用Genotype.randomInitialGenotype()创建一个随机初始化的个体的基因型
         Genotype genotype = Genotype.randomInitialGenotype(configuration);
@@ -191,9 +203,10 @@ public class JGAPGAModel {
         for (int number = 0; number < 10 ;number++) {
             for (int i = 0; i < cplex_solution_chromosome_list.length; i++) {
                 population.addChromosome(cplex_solution_chromosome_list[i]);
-
             }
         }
+
+        // System.out.println("111111------" + population.size());
 
 
         // 执行一定数量的进化操作
