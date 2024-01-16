@@ -2,7 +2,9 @@ package models;
 
 import io.jenetics.*;
 import io.jenetics.engine.*;
-import io.jenetics.stat.DoubleMomentStatistics;
+import io.jenetics.util.Factory;
+import io.jenetics.util.ISeq;
+import org.jgap.Population;
 
 import java.io.*;
 import java.util.*;
@@ -20,6 +22,8 @@ public class GAModel {
     private static Map<Integer, Integer> mDegrees; // 度
     private Map<Integer, Integer> mDataPacketsNeed; // 尚需数据块的个数
     private List<Integer> mSelectedServerList; // 数据节点列表
+
+    private static ArrayList<List> mCplexSolutionList;
 
     private int mPopulation; // 种群数量
 
@@ -64,9 +68,9 @@ public class GAModel {
                     access++;
                     mAccessMatrix[i][j] = 1;
                 } else mAccessMatrix[i][j] = 0;
-                System.out.print(mAccessMatrix[i][j] + ",");
+                // System.out.print(mAccessMatrix[i][j] + ",");
             }
-            System.out.println();
+            // System.out.println();
             mDegrees.put(i, access); // access为广义上的度
         }
         // System.out.println("各节点度数：" + mDegrees);
@@ -127,10 +131,58 @@ public class GAModel {
         return false;
     }
 
+    public static class DataPlacementFactory implements Factory<IntegerGene> {
+
+        public DataPlacementFactory(int populationSize, int chromosomeLength) {
+        }
+
+
+        @Override
+        public IntegerGene newInstance() {
+            System.out.println("--------------------------");
+            return null;
+        }
+    }
+
+
+    // 初始化数组的方法
+    private static IntegerGene[] initializeGeneArray(List<Integer> solution, int length) {
+        IntegerGene[] array = new IntegerGene[length];
+        IntegerGene geneZero = IntegerGene.of(0, 0, 1);
+        IntegerGene geneOne = IntegerGene.of(1, 0, 1);
+
+        Arrays.fill(array, geneZero);
+        // 将List中指定索引基因位置设为1
+        for (int index : solution) {
+            if (index >= 0 && index < length) {
+                array[index] = geneOne;
+            }
+        }
+
+        return array;
+    }
+
+
+    // 获取自定义个体的方法
+    // private static List<Genotype<IntegerGene>> getCustomIndividuals(int chromosomeLength) {
+    //     int numberOfCustomIndividuals = 20;
+    //     List<Genotype<IntegerGene>> customIndividuals = new ArrayList<>();
+    //
+    //     for (int i = 0; i < numberOfCustomIndividuals; i++) {
+    //         // 在这里替换为你自己个性化的基因型生成逻辑
+    //         Genotype<IntegerGene> customIndividual = initializeGeneArray(chromosomeLength);
+    //         customIndividuals.add(customIndividual);
+    //     }
+    //
+    //     return customIndividuals;
+    // }
+
+
     // Define the fitness function
     private static double fitness(Genotype<IntegerGene> PLSolution) {
         Chromosome<IntegerGene> M_number_chromosome = PLSolution.getChromosome(0);
         Chromosome<IntegerGene> data_placement_chromosome = PLSolution.getChromosome(1);
+        // System.out.println("data_placement_chromosome:   " + data_placement_chromosome);
         double N = 0;
         int M = M_number_chromosome.getGene(0).intValue();
         double fitness;
@@ -184,7 +236,7 @@ public class GAModel {
         double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
         fitness = adaptationItem + penaltyItem;
         if (isFeasibleSolution) {
-            System.out.println("可行解： " + "M=" +M + ",  数据分布：" + data_placement_chromosome);
+            // System.out.println("可行解： " + "M=" +M + ",  数据分布：" + data_placement_chromosome);
         }
         return -fitness;
     }
@@ -192,31 +244,54 @@ public class GAModel {
     // 整个演化过程
     // 最优解和其他解的区别
 
-    public void runGACost(int population, int serverNumber) {
+    public void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
         // 首先进行矩阵转化，计算度
         ConvertDistoAccAndCalDegree();
+
+        mCplexSolutionList = cplexSolutionList;
+        // System.out.println("mCplexSolutionList" + mCplexSolutionList);
+
+        List solution = mCplexSolutionList.get(1);
+        IntegerGene[] geneArray = initializeGeneArray(solution, serverNumber);
+
+
+        // DataPlacementFactory<Genotype<IntegerGene>> DPSolutionFactory = new DataPlacementFactory();
+
+
+        IntegerChromosome chromosome = IntegerChromosome.of(geneArray);
+
+        System.out.println("chromosome" + chromosome);
 
         IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, serverNumber);
         IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1);
 
+        ISeq<Chromosome<IntegerGene>> PLSolution222 = Genotype.of(M_number_chromosome, chromosome).toSeq();
         Genotype<IntegerGene> PLSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
-
         System.out.println("PLSolution" + PLSolution);
+
+
+
 
         Engine<IntegerGene, Double> engine = Engine.builder(GAModel::fitness, PLSolution)
                 // .constraint(new SolutionConstraint())
-                .populationSize(population)
                 .offspringFraction(0.8)
                 .survivorsFraction(0.2)
+                .populationSize(population)
                 .selector(new TournamentSelector<>()) // 选择
                 .alterers(new Mutator<>(0.2))  // 变异概率0.2
                 .build();
+
+
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
 
         EvolutionResult<IntegerGene, Double> result = engine.stream()
                 .limit(Limits.bySteadyFitness(100))
                 .peek(Statistics)
+                .map((EvolutionResult) -> {
+                    System.out.println("EvolutionResult:   " +  EvolutionResult);
+                    return EvolutionResult;
+                })
                 .collect(EvolutionResult.toBestEvolutionResult());
 
         double M =  result.getBestPhenotype().getGenotype().getChromosome(0).getGene(0).intValue();

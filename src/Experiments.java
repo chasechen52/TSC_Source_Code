@@ -1,15 +1,5 @@
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.rmi.activation.ActivateFailedException;
-import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -18,15 +8,13 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-
-import ilog.concert.IloIntVar;
 
 import java.text.NumberFormat;
 
 import models.*;
+import org.jgap.InvalidConfigurationException;
 import tool.RandomGraphGenerator;
 
 public class Experiments {
@@ -37,6 +25,8 @@ public class Experiments {
     private static ECRandomModel mReplicaModel;
 
     private static GAModel mGAModel;
+
+    private static JGAPGAModel mJGAPGAModel;
     private static double mGACost;
     private static List<Integer> mGAServers = new ArrayList<>();
     private static double mECGreedyVoteCost;
@@ -58,12 +48,14 @@ public class Experiments {
 
     private static List<String> mLines = new ArrayList<>();
 
-    public static void main(String[] args) throws ClassNotFoundException, IOException {
+    private static ArrayList<List> CplexSolutionList = new ArrayList<>();
+
+    public static void main(String[] args) throws ClassNotFoundException, IOException, InvalidConfigurationException {
 
         // runSettings();
         // runExample();
-        runGAExample();
-
+        // runGAExample();
+        runJGAPGAExample();
         // try {
         //     Calendar cal = Calendar.getInstance();
         //     SimpleDateFormat sdf = new SimpleDateFormat("dd-HH-mm");
@@ -172,7 +164,9 @@ public class Experiments {
         mECRandomModel = new ECRandomModel(serversNumber, distanceMatrics, hops);
         mReplicaModel = new ECRandomModel(serversNumber, distanceMatrics, hops);
         mGAModel = new GAModel(serversNumber, distanceMatrics, hops);
+        mJGAPGAModel = new JGAPGAModel(serversNumber, distanceMatrics, hops);
         int mindeg = minDegree(serversNumber, distanceMatrics, hops);
+        // System.out.println("mindeg" + mindeg);
         for (int m = 1; m <= mindeg; m++) {
             ECCplexModel tmp = new ECCplexModel(serversNumber, distanceMatrics, hops, m);
             mECCplexModels.add(tmp);
@@ -642,7 +636,10 @@ public class Experiments {
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
-            runGACost(population, serverNumber);
+            getECCplexSolution();
+            System.out.println("CplexSolutionList    " + CplexSolutionList);
+            runGACost(population, serverNumber, CplexSolutionList);
+            // runJGAPGACost(population, serverNumber, CplexSolutionList);
             runECGreedyVoteCost();
             // runECCplexCost();
             break;
@@ -654,14 +651,49 @@ public class Experiments {
         }
     }
 
-    public static void runGACost(int population, int serverNumber) {
+    private static void runJGAPGAExample() throws ClassNotFoundException, IOException, InvalidConfigurationException {
+        int serverNumber = 20;
+        double d = 2;
+        int h = 1;
+        int population = 100;
+        while (true) {
+            int[][] dism = GraphGenerate(serverNumber, d);
+            ModelSetup(serverNumber, dism, h);
+            getECCplexSolution();
+            // System.out.println("CplexSolutionList    " + CplexSolutionList);
+            // runGACost(population, serverNumber, CplexSolutionList);
+            runJGAPGACost(population, serverNumber, CplexSolutionList);
+            runECGreedyVoteCost();
+            // runECCplexCost();
+            break;
+            // if (mGACost <= mReplicaCost * 0.75) {
+            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
+            //     break;
+            // }
+
+        }
+    }
+
+    public static void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
         // mGACost = mGAModel.getmGACost();
         long start = System.currentTimeMillis();
-        mGAModel.runGACost(population, serverNumber);
+        mGAModel.runGACost(population, serverNumber, cplexSolutionList);
         long end = System.currentTimeMillis();
 
         // System.out.println("\nGAModel");
-        System.out.println("Time:" + (end-start) + " ms");
+        System.out.println("Time:" + (end - start) + " ms");
+        System.out.println();
+    }
+
+    public static void runJGAPGACost(int populationSize, int serverNumber, ArrayList<List> cplexSolutionList) throws IOException, ClassNotFoundException, InvalidConfigurationException {
+
+        // mGACost = mGAModel.getmGACost();
+        long start = System.currentTimeMillis();
+        mJGAPGAModel.runGACost(populationSize, serverNumber, cplexSolutionList);
+        long end = System.currentTimeMillis();
+
+        // System.out.println("\nGAModel");
+        System.out.println("Time:" + (end - start) + " ms");
         System.out.println();
     }
 
@@ -678,7 +710,7 @@ public class Experiments {
 
 
         // System.out.println("\nECGreedyVoteModel");
-        System.out.println("Time:" + (end-start) + " ms");
+        System.out.println("Time:" + (end - start) + " ms");
         // System.out.println("mECGreedyVotePacketsNeeds:" + packetsNeed);
         System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
         System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
@@ -729,11 +761,58 @@ public class Experiments {
         mECCplexServers = mincostServers;
         long end = System.currentTimeMillis();
         // double duration = (double) (Duration.between(start, end).toMillis());
-        System.out.println("Time:" + (end-start) + " ms");
+        System.out.println("Time:" + (end - start) + " ms");
         // System.out.println("mECCplexPacketsNeeds:" + best_pn);
         System.out.println("mECCplexCost:" + mECCplexCost);
         System.out.println("mECCplexServers:" + mECCplexServers + "\n");
     }
+
+    private static void getECCplexSolution() throws IOException, ClassNotFoundException {
+        // System.out.println("\nECCplexModel");
+        double min_cost = Double.MAX_VALUE;
+        int best_pn = 0;
+        List<Integer> mincostServers = new ArrayList<>();
+        long start = System.currentTimeMillis();
+        for (ECCplexModel it : mECCplexModels) {
+            double cur_cost = 0.0;
+            it.runECCplex();
+            int packetsNeed = it.getPacketsNeed();
+            cur_cost = it.getCost();
+            //
+            // List<Integer> M = new ArrayList<>();
+            // M.add(packetsNeed);
+            // List<List> solution = new ArrayList<>();
+            // // solution.add(M);
+            // solution.add(it.getSelectedServers());
+            CplexSolutionList.add(it.getSelectedServers());
+            System.out.println("packetsNeed: " + packetsNeed + ", CplexSolutionList" + it.getSelectedServers());
+            // if (packetsNeed == 1) {
+            //     mReplicaCost = cur_cost;
+            //     List<Integer> intermedia_replica = deepCopy(CplexCurServers);
+            //     mReplicaServers = intermedia_replica;
+            //     // System.out.println("Replica:" + CplexCurServers + " cost:" + cur_cost);
+            // }
+            // if (packetsNeed >= 2) {
+            //     // System.out.println(packetsNeed + ":" + CplexCurServers + " cost:" + cur_cost);
+            // }
+            // if (packetsNeed >= 2 && cur_cost < min_cost) {
+            //     min_cost = cur_cost;
+            //     best_pn = packetsNeed;
+            //     List<Integer> intermedia = deepCopy(CplexCurServers);
+            //     mincostServers = intermedia;
+            // }
+        }
+        // System.out.println("\nBestOfCplex:" + best_pn + ":" + mincostServers + " cost:" + min_cost);
+        mECCplexCost = min_cost;
+        mECCplexServers = mincostServers;
+        long end = System.currentTimeMillis();
+        // double duration = (double) (Duration.between(start, end).toMillis());
+        System.out.println("Time:" + (end - start) + " ms");
+        // System.out.println("mECCplexPacketsNeeds:" + best_pn);
+        System.out.println("mECCplexCost:" + mECCplexCost);
+        System.out.println("mECCplexServers:" + mECCplexServers + "\n");
+    }
+
 
     private static void runECGreedyDegreeCost() throws ClassNotFoundException, IOException {
         long start = System.currentTimeMillis();
