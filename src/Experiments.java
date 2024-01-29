@@ -49,6 +49,8 @@ public class Experiments {
     private static List<String> mLines = new ArrayList<>();
 
     private static ArrayList<List> CplexSolutionList = new ArrayList<>();
+    private static ArrayList<Integer> voteSolutionList = new ArrayList<>();
+
 
     public static void main(String[] args) throws ClassNotFoundException, IOException, InvalidConfigurationException {
 
@@ -81,13 +83,13 @@ public class Experiments {
 
     private static int getMapMinValue(Map<Integer, Integer> maps)  // 取出最小value对应的Key值,Int
     {
-        Comparator<Map.Entry<Integer, Integer>> valCmp = new Comparator<Map.Entry<Integer, Integer>>() {
+        Comparator<Entry<Integer, Integer>> valCmp = new Comparator<Entry<Integer, Integer>>() {
             @Override
             public int compare(Entry<Integer, Integer> o1, Entry<Integer, Integer> o2) {
                 return o1.getValue().intValue() - o2.getValue().intValue();  // 升序排序
             }
         };
-        List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(maps.entrySet()); // 传入maps实体
+        List<Entry<Integer, Integer>> list = new ArrayList<Entry<Integer, Integer>>(maps.entrySet()); // 传入maps实体
         Collections.sort(list, valCmp);
 
         return list.get(0).getValue();
@@ -652,18 +654,19 @@ public class Experiments {
     }
 
     private static void runJGAPGAExample() throws ClassNotFoundException, IOException, InvalidConfigurationException {
-        int serverNumber = 20;
+        int serverNumber = 100;
         double d = 2;
         int h = 1;
-        int population = 80;
+        int population = 25;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
-            getECCplexSolution();
+            // getECCplexSolution();
             // System.out.println("CplexSolutionList    " + CplexSolutionList);
             // runGACost(population, serverNumber, CplexSolutionList);
-            runJGAPGACost(population, serverNumber, CplexSolutionList);
-            runECGreedyVoteCost();
+            // ECGreedyVoteModel
+            getECGreedyVoteSolution();
+            runJGAPGACost(population, serverNumber, voteSolutionList);
             // runECCplexCost();
             break;
             // if (mGACost <= mReplicaCost * 0.75) {
@@ -685,11 +688,11 @@ public class Experiments {
         System.out.println();
     }
 
-    public static void runJGAPGACost(int populationSize, int serverNumber, ArrayList<List> cplexSolutionList) throws IOException, ClassNotFoundException, InvalidConfigurationException {
+    public static void runJGAPGACost(int populationSize, int serverNumber, List<Integer> mECGreedyVoteServers) throws IOException, ClassNotFoundException, InvalidConfigurationException {
 
         // mGACost = mGAModel.getmGACost();
         long start = System.currentTimeMillis();
-        mJGAPGAModel.runGACost(populationSize, serverNumber, cplexSolutionList);
+        mJGAPGAModel.runGACost(populationSize, serverNumber, mECGreedyVoteServers);
         long end = System.currentTimeMillis();
 
         // System.out.println("\nGAModel");
@@ -813,6 +816,30 @@ public class Experiments {
         System.out.println("mECCplexServers:" + mECCplexServers + "\n");
     }
 
+    private static void getECGreedyVoteSolution() throws IOException, ClassNotFoundException {
+
+        ArrayList<Integer> arrayList = new ArrayList<>();
+
+        long start = System.currentTimeMillis();
+        mECGreedyVoteModel.runECGreedyVoteCost();
+        int mPacketNeed = mECGreedyVoteModel.getPacketsNeed();
+        mECGreedyDegreeCost = mECGreedyVoteModel.getCost();
+        voteSolutionList = (ArrayList<Integer>) mECGreedyVoteModel.getSelectedServers();
+        mECGreedyDegreeServers = mECGreedyVoteModel.getSelectedServers();
+
+        long end = System.currentTimeMillis();
+
+        voteSolutionList.add(0, mPacketNeed);
+
+        System.out.println("\nVoteModel");
+        System.out.println("Time:" + (end-start) + " ms");
+        System.out.println("VotePacketsNeeds:" + mPacketNeed);
+        System.out.println("VoteCost:" + mECGreedyDegreeCost);
+        System.out.println("VoteServers:" + mECGreedyDegreeServers + "\n");
+
+    }
+
+
 
     private static void runECGreedyDegreeCost() throws ClassNotFoundException, IOException {
         long start = System.currentTimeMillis();
@@ -827,6 +854,7 @@ public class Experiments {
         // System.out.println("mECGreedyDegreePacketsNeeds:" + packetsNeed);
         // System.out.println("mECGreedyDegreeCost:" + mECGreedyDegreeCost);
         // System.out.println("mECGreedyDegreeServers:" + mECGreedyDegreeServers + "\n");
+
     }
 
     private static void runECRandomCost() throws ClassNotFoundException, IOException {
