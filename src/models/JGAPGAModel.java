@@ -3,7 +3,9 @@ package models;
 import org.jgap.*;
 import org.jgap.impl.*;
 
+import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class JGAPGAModel {
@@ -24,6 +26,21 @@ public class JGAPGAModel {
 
     private int mPopulation; // 种群数量
 
+    private int mapMinDegree;
+
+    private double mFitness;
+
+    public static <T> List<T> deepCopy(List<T> src) throws IOException, ClassNotFoundException {
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(byteOut);
+        out.writeObject(src);
+
+        ByteArrayInputStream byteIn = new ByteArrayInputStream(byteOut.toByteArray());
+        ObjectInputStream in = new ObjectInputStream(byteIn);
+        @SuppressWarnings("unchecked")
+        List<T> dest = (List<T>) in.readObject();
+        return dest;
+    }
 
     public void ConvertDistoAccAndCalDegree() // 根据hops，将能访问到的节点全部置1，否则置0;同时计算度
     {
@@ -54,6 +71,8 @@ public class JGAPGAModel {
         List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(maps.entrySet()); // 传入maps实体
         list.sort(valCmp);
 
+        // 报错的原因为此处list为【】
+        // System.out.println("list" + list);
         return list.get(0).getValue();
     }
 
@@ -66,6 +85,70 @@ public class JGAPGAModel {
         mAccessMatrix = new int[mServersNumber][mServersNumber];
         mSelectedServerList = new ArrayList<>();
         mDegrees = new HashMap<>();
+        mDataPacketsNeed = new HashMap<>();
+    }
+
+    public int selectServerwithMostDegrees() // 选择有最高度的节点
+    {
+        return getMapMaxValueKey(mDegrees);
+    }
+
+    public List getTopKDegreesKeyList(Map<Integer, Integer> map) { // 选择Top-K 个度数最大服务器
+        // System.out.println("map" + map);
+        return map.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .limit(3)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
+
+    // 从前三个最大的value中随机选择一个对应的key
+    private static List<Integer> getCandidateServersList(Map<Integer, Integer> map, int k) {
+        // System.out.println("map: " + map);
+        return map.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .limit(Math.min(k, map.size()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
+
+    // 从List中随机选择一个值
+    private static int getRandomKeyFromCandidateServersList(List<Integer> valuesList) {
+        // System.out.println("valuesList: " +valuesList );
+        // 判断List是否为空
+        if (valuesList == null || valuesList.isEmpty()) {
+            throw new IllegalArgumentException("List不能为空");
+        }
+
+        // 生成一个随机索引
+        Random random = new Random();
+        int randomIndex = random.nextInt(valuesList.size());
+
+        // 返回对应的随机值
+        return valuesList.get(randomIndex);
+    }
+
+    public static int getMapMaxValueKey(Map<Integer, Integer> map)  // 取出最大value对应的Key值,Int
+    {
+        List<Map.Entry<Integer, Integer>> list = new ArrayList<Map.Entry<Integer, Integer>>(map.entrySet());
+        Collections.sort(list, (o1, o2) -> (o1.getValue().intValue() - o2.getValue().intValue()));
+        int key = list.get(list.size() - 1).getKey();
+        return key;
+    }
+
+    public boolean checkPacketsRequired() // 检查是否所有点都已满足，若是返回true
+    {
+        int count = 0;
+        for (int val : mDataPacketsNeed.values()) {
+            // System.out.println("mDataPacketsNeed" + mDataPacketsNeed);
+            if (val == 0) {
+                count++;
+            }
+        }
+        if (count == mDataPacketsNeed.size()) {
+            return true;
+        }
+        return false;
     }
 
     // 初始化数组的方法
@@ -112,11 +195,11 @@ public class JGAPGAModel {
                 }
             }
 
-            double a = mServersNumber * 1000;
+            double a = Math.pow(mServersNumber, 3);
             // double b = 10000;
             // 适应项：
             // double adaptationItem = a * N * (1 + (double) 1 / M);
-            double adaptationItem = a * Math.pow(M / N, 2);
+            double adaptationItem = a * Math.pow(M / N, 3);
             // 惩罚项：不可行的节点数 / 总服务器数
             double penaltyItem = isFeasibleSolution ? 1 : 0;
             // double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
@@ -136,73 +219,112 @@ public class JGAPGAModel {
     }
 
 
-    public void runGACost(int populationSize, int serverNumber, List<Integer> voteSolutionList) throws InvalidConfigurationException {
+    public void initDataPacketsNeed(int requiredPackets) {
+        for (int key = 0; key < mServersNumber; ++key) // 将mDataPacketsNeed重置
+        {
+            mDataPacketsNeed.put(key, requiredPackets);
+        }
+    }
 
-        ConvertDistoAccAndCalDegree();
-        Configuration configuration = new DefaultConfiguration();
+    public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
+        // 计算方法一： 最短距离中的最大距离
+        int distanceInSet = Integer.MIN_VALUE;
+        int newSelectedServerKey = 0;
+        for (Integer candidateServer : candidateServersList) {
+            int minDistanceKey = 0;
+            int distance = Integer.MAX_VALUE;
+            // 计算候选服务器到解服务器的距离
+            for (Integer selectedServer : selectedServerList) {
+                if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
+                    minDistanceKey = selectedServer;
+                    distance = mDistanceMatrix[candidateServer][selectedServer];
+                }
+            }
+            if (distanceInSet < distance) {
+                distanceInSet = distance;
+                newSelectedServerKey = candidateServer;
+            }
+            // System.out.println("newSelectedServerKey" + newSelectedServerKey);
+        }
+        return newSelectedServerKey;
+    }
 
-        // mCplexSolutionList = cplexSolutionList;
-
-        // IChromosome[] cplex_solution_chromosome_list = new IChromosome[cplexSolutionList.size()];
-
-        // for (int i = 1; i < cplex_solution_chromosome_list.length; i++) {
-        //     List solution = cplexSolutionList.get(i);
-        //     Gene[] genes = new Gene[serverNumber + 1];
-        //     for (int j = 0; j < serverNumber + 1; j++) {
-        //         if (j == 0) {
-        //             genes[j] = new IntegerGene(configuration, 2, getMapMinValue(mDegrees));
-        //             genes[j].setAllele(i+1);
-        //             System.out.println("cplex_solution_chromosome_list: " + cplexSolutionList);
-        //             System.out.println("genes[j]" + genes[j]);
-        //         } else {
-        //             genes[j] = new IntegerGene(configuration, 0, 1);
-        //             genes[j].setAllele(0);
-        //         }
-        //     }
-        //     for (Object index : solution) {
-        //         int mIndex = (int) index;
-        //         if (mIndex >= 0 && mIndex < serverNumber + 1) {
-        //             // genes[mIndex] = new IntegerGene(configuration, 0, 1);
-        //             genes[mIndex].setAllele(1);
-        //         }
-        //     }
-        //     IChromosome feasible_solution = new Chromosome(configuration, genes);
-        //     cplex_solution_chromosome_list[i] = feasible_solution;
-        // }
-
-        // 创建一个遗传算法配置
-
-        // 创建第一个染色体（长度为1，取值范围为0到10的整数）
-
-        Gene[] genes = new Gene[serverNumber + 1];
-        for (int j = 0; j < serverNumber + 1; j++) {
-            if (j == 0) {
-                genes[j] = new IntegerGene(configuration, 2, getMapMinValue(mDegrees));
-                genes[j].setAllele(voteSolutionList.get(0));
-                // System.out.println("voteSolutionList: " + voteSolutionList);
-                // System.out.println("genes[j]" + genes[j]);
-            } else {
-                genes[j] = new IntegerGene(configuration, 0, 1);
-                genes[j].setAllele(0);
+    public void updatePacketsNeed(int newSelectedServerKey) {
+        for (int server = 0; server < mServersNumber; ++server) {  // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
+            if (mAccessMatrix[newSelectedServerKey][server] == 1) {
+                int packetsNeed = mDataPacketsNeed.get(server);
+                if (packetsNeed > 0) {
+                    mDataPacketsNeed.put(server, packetsNeed - 1);
+                }
             }
         }
-        for (int mIndex = 1; mIndex < voteSolutionList.size(); mIndex++) {
-            genes[voteSolutionList.get(mIndex)].setAllele(1);
+    }
+
+    public void getReliableSolutions() throws IOException, ClassNotFoundException {
+        ConvertDistoAccAndCalDegree(); // 首先进行矩阵转化，度计算
+        double min_cost = Double.MAX_VALUE;
+        int best_pn = 2; // 最低cost对应的数据块数
+        int candidatesNumber = 3;
+        List<Integer> MinCostServerList = new ArrayList<>();
+        // System.out.println("degreesMap" + degreesMap);
+        for (int m = 2; m <= mapMinDegree; ++m) {
+            mDegrees.clear();
+            ConvertDistoAccAndCalDegree(); // 由于每次循环对mDegrees进行了删除，因此每次都需要重新生成mDegrees
+            initDataPacketsNeed(m); // 初始化mDataPacketsNeed
+            double cost;
+            List<Integer> SelectedServerList = new ArrayList<>();
+            List<Integer> candidateServersList = getCandidateServersList(mDegrees, candidatesNumber); // step1: 获取候选服务器列表
+            int initialServer = getRandomKeyFromCandidateServersList(candidateServersList); // 在候选服务器列表中随机选择一个服务器加入解服务器列表
+            SelectedServerList.add(initialServer);
+            updatePacketsNeed(initialServer); // 选择后更新每个节点所需要的数据包数量
+            mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
+            while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
+                // 更新候选服务器
+                candidateServersList = getCandidateServersList(mDegrees, 1);
+                int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
+                SelectedServerList.add(newSelectedServer);
+                updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
+                mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
+            }
+            cost = (double) SelectedServerList.size() / (double) m;
+            if (m >= 2 && cost < min_cost) {
+                min_cost = cost;
+                MinCostServerList = deepCopy(SelectedServerList);
+                best_pn = m;
+            }
+            // System.out.println("SelectedServerList" + SelectedServerList);
         }
-        IChromosome feasible_solution = new Chromosome(configuration, genes);
+        mSelectedServerList = MinCostServerList;
+        mPacketsNeed = best_pn;
+        // System.out.println("best_pn: " + mPacketsNeed);
+    }
 
-        System.out.println(feasible_solution + "feasible_solution");
+    public IChromosome convertSolutionToChromosome(Configuration configuration) throws InvalidConfigurationException {
 
-        // // 创建复合基因并将两个基因合并成一个染色体
-        // for (int i = 0; i < genes.length; i++) {
-        //     if (i == 0) genes[i] = new IntegerGene(configuration, 2, getMapMinValue(mDegrees));
-        //     else genes[i] = new IntegerGene(configuration, 0, 1);
-        // }
+        Gene[] genes = new Gene[mServersNumber + 1];
+        // TODO: mDegrees 删除的问题
+        genes[0] = new IntegerGene(configuration, 2, mapMinDegree);
+        genes[0].setAllele(mPacketsNeed);
+        // System.out.println("genes[j]" + genes[0]);
+        for (int j = 1; j < mServersNumber + 1; j++) {
+            genes[j] = new IntegerGene(configuration, 0, 1);
+            genes[j].setAllele(0);
+        }
 
-        // 创建染色体并将多个基因添加到其中
-        IChromosome data_placement_strategy_chromosome = new Chromosome(configuration, genes);
+        for (int mIndex : mSelectedServerList) {
+            // int mIndex = (int) index;
+            if (mIndex >= 0 && mIndex < mServersNumber + 1) {
+                // genes[mIndex] = new IntegerGene(configuration, 0, 1);
+                genes[mIndex].setAllele(1);
+            }
+        }
+        return new Chromosome(configuration, genes);
+    }
 
-        configuration.setSampleChromosome(data_placement_strategy_chromosome);
+
+    public void runGACost(int populationSize, int serverNumber) throws InvalidConfigurationException, IOException, ClassNotFoundException {
+        Configuration configuration = new DefaultConfiguration();
+
         configuration.setPopulationSize(populationSize);
 
         // 设置适应度函数
@@ -210,7 +332,6 @@ public class JGAPGAModel {
         configuration.setFitnessFunction(fitnessFunction);
 
         // 设置演化方式为精英选择
-        // int tournamentSize = 2; // 锦标赛的大小
         BestChromosomesSelector selectionMethod = new BestChromosomesSelector(configuration, 0.1);
         configuration.addNaturalSelector(selectionMethod, false);
 
@@ -219,17 +340,32 @@ public class JGAPGAModel {
         MutationOperator mutationOperator = new MutationOperator(configuration, mutationRate);
         configuration.addGeneticOperator(mutationOperator);
 
+        Gene[] genes = new Gene[serverNumber + 1];
+
+        ConvertDistoAccAndCalDegree();
+        mapMinDegree = getMapMinValue(mDegrees);
+
+        // 创建复合基因并将两个基因合并成一个染色体
+        for (int i = 0; i < genes.length; i++) {
+            if (i == 0) genes[i] = new IntegerGene(configuration, 2, mapMinDegree);
+            else genes[i] = new IntegerGene(configuration, 0, 1);
+        }
+
+        // 创建染色体并将多个基因添加到其中
+        IChromosome data_placement_strategy_chromosome = new Chromosome(configuration, genes);
+
+        configuration.setSampleChromosome(data_placement_strategy_chromosome);
+        configuration.setPopulationSize(populationSize);
 
         // 使用Genotype.randomInitialGenotype()创建一个随机初始化的个体的基因型
         Genotype genotype = Genotype.randomInitialGenotype(configuration);
-
         Population population = genotype.getPopulation();
-        for (int number = 0; number < 25 ;number++) {
-                population.addChromosome(feasible_solution);
+        for (int i = 0; i < 10; i++) {
+            getReliableSolutions();
+            ConvertDistoAccAndCalDegree(); // 由于每次循环对mDegrees进行了删除，因此每次都需要重新生成mDegrees
+            IChromosome feasible_solution = convertSolutionToChromosome(configuration);
+            population.addChromosome(feasible_solution);
         }
-
-        // System.out.println("111111------" + population.size());
-
 
         // 执行一定数量的进化操作
         int numberOfEvolutions = 100; // 你可以根据需要设置进化的次数
@@ -239,6 +375,7 @@ public class JGAPGAModel {
         // 获取最优染色体
         IChromosome fittestChromosome = genotype.getFittestChromosome();
         double fitness = genotype.getFittestChromosome().getFitnessValue();
+        mFitness = fitness;
 
         double cost;
         double N = 0;
@@ -250,9 +387,11 @@ public class JGAPGAModel {
 
         cost = N / M;
 
+        mCost = cost;
+
         // 打印最优染色体的基因值
-        System.out.println("mGACost: " + cost);
-        System.out.println("fitness: " + fitness);
+        // System.out.println("mGACost: " + cost);
+        // System.out.println("fitness: " + fitness);
         // System.out.println("mGAServers: " + Arrays.toString(fittestChromosome.));
         ArrayList<Integer> GAServerList = new ArrayList<>();
         for (int i = 0; i < fittestChromosome.getGenes().length; i++) {
@@ -260,10 +399,26 @@ public class JGAPGAModel {
             int GAServer = (int) gene.getAllele();
             GAServerList.add(GAServer);
         }
-        System.out.println("m:  " + fittestChromosome.getGene(0));
-        System.out.println("GAServerList" + GAServerList);
+
+        Configuration.reset();
+        // System.out.println("m:  " + fittestChromosome.getGene(0));
+        // System.out.println("GAServerList" + GAServerList);
+    }
+
+
+    public double getCost()
+    {
+        return mCost;
+    }
+
+    public double getFitness()
+    {
+        return mFitness;
     }
 }
+
+
+
 
 
 

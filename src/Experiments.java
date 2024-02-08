@@ -1,11 +1,11 @@
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.HashMap;
-import java.util.Comparator;
-import java.util.Collections;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -51,6 +51,8 @@ public class Experiments {
     private static ArrayList<List> CplexSolutionList = new ArrayList<>();
     private static ArrayList<Integer> voteSolutionList = new ArrayList<>();
 
+    private static double GAFitness;
+
 
     public static void main(String[] args) throws ClassNotFoundException, IOException, InvalidConfigurationException {
 
@@ -58,18 +60,18 @@ public class Experiments {
         // runExample();
         // runGAExample();
         runJGAPGAExample();
-        // try {
-        //     Calendar cal = Calendar.getInstance();
-        //     SimpleDateFormat sdf = new SimpleDateFormat("dd-HH-mm");
-        //
-        //     Path file = Paths.get("ECModels Comparision" + sdf.format(cal.getTime()) + ".txt");
-        //     // Path file = Paths.get("Synthetic - results-" + sdf.format(cal.getTime()) + ".txt");
-        //
-        //     Files.write(file, mLines, Charset.forName("UTF-8"));
-        // } catch (IOException e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
-        // }
+        try {
+            Calendar cal = Calendar.getInstance();
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-HH-mm");
+
+            Path file = Paths.get("ECModels Comparision" + sdf.format(cal.getTime()) + ".txt");
+            // Path file = Paths.get("Synthetic - results-" + sdf.format(cal.getTime()) + ".txt");
+
+            Files.write(file, mLines, Charset.forName("UTF-8"));
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     private static boolean isConnected(List<Integer> servers, int server, int[][] adjacencyMatrix) {
@@ -630,74 +632,138 @@ public class Experiments {
 
     }
 
-    private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 20;
-        double d = 2;
-        int h = 1;
-        int population = 100;
-        while (true) {
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            getECCplexSolution();
-            System.out.println("CplexSolutionList    " + CplexSolutionList);
-            runGACost(population, serverNumber, CplexSolutionList);
-            // runJGAPGACost(population, serverNumber, CplexSolutionList);
-            runECGreedyVoteCost();
-            // runECCplexCost();
-            break;
-            // if (mGACost <= mReplicaCost * 0.75) {
-            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
-            //     break;
-            // }
-
-        }
-    }
+    // private static void runGAExample() throws ClassNotFoundException, IOException {
+    //     int serverNumber = 20;
+    //     double d = 2;
+    //     int h = 1;
+    //     int population = 100;
+    //     while (true) {
+    //         int[][] dism = GraphGenerate(serverNumber, d);
+    //         ModelSetup(serverNumber, dism, h);
+    //         getECCplexSolution();
+    //         System.out.println("CplexSolutionList    " + CplexSolutionList);
+    //         runGACost(population, serverNumber, CplexSolutionList);
+    //         // runJGAPGACost(population, serverNumber, CplexSolutionList);
+    //         runECGreedyVoteCost();
+    //         // runECCplexCost();
+    //         break;
+    //         // if (mGACost <= mReplicaCost * 0.75) {
+    //         //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
+    //         //     break;
+    //         // }
+    //
+    //     }
+    // }
 
     private static void runJGAPGAExample() throws ClassNotFoundException, IOException, InvalidConfigurationException {
-        int serverNumber = 100;
-        double d = 2;
-        int h = 1;
-        int population = 25;
-        while (true) {
-            int[][] dism = GraphGenerate(serverNumber, d);
+        int serverNumber = 0;
+        for (int ep = 0; ep < 10; ep ++) {
+            // int serverNumber = 0;
+            serverNumber += 10;
+            double d = 2;
+            int h = 1;
+            int population = 25;int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
-            // getECCplexSolution();
-            // System.out.println("CplexSolutionList    " + CplexSolutionList);
-            // runGACost(population, serverNumber, CplexSolutionList);
-            // ECGreedyVoteModel
-            getECGreedyVoteSolution();
-            runJGAPGACost(population, serverNumber, voteSolutionList);
-            // runECCplexCost();
-            break;
-            // if (mGACost <= mReplicaCost * 0.75) {
-            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
-            //     break;
-            // }
+            double totalGACost = 0;
+            double totalVoteCost = 0;
+            for (int i = 0; i < 10; i++) {
+                runJGAPGACost(population, serverNumber);
+                if (GAFitness == 0) System.out.println("false!!!!!!");;
+                runECGreedyVoteCost();
+                totalGACost += mGACost;
+                totalVoteCost += mECGreedyVoteCost;
+            }
+            double averageGACost = totalGACost / 10;
+            double averageVoteCost = totalVoteCost / 10;
+            System.out.println("averageGACost:  " + averageGACost);
+            System.out.println("averageVoteCost:  " + averageVoteCost);
 
+            mLines.add("==============================setting1==============================  " );
+            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h );
+            mLines.add("averageGACost:  " + averageGACost);
+            mLines.add("averageVoteCost:  " + averageVoteCost);
+        }
+        int d = 0;
+        for (int ep = 0; ep < 5; ep ++) {
+            // int serverNumber = 0;
+            serverNumber = 150;
+            // double d = 0;
+            d+=1;
+            int h = 1;
+            int population = 25;int[][] dism = GraphGenerate(serverNumber, d);
+            ModelSetup(serverNumber, dism, h);
+            double totalGACost = 0;
+            double totalVoteCost = 0;
+            for (int i = 0; i < 10; i++) {
+                runJGAPGACost(population, serverNumber);
+                if (GAFitness == 0) break;
+                runECGreedyVoteCost();
+                totalGACost += mGACost;
+                totalVoteCost += mECGreedyVoteCost;
+            }
+            double averageGACost = totalGACost / 10;
+            double averageVoteCost = totalVoteCost / 10;
+            System.out.println("averageGACost:  " + averageGACost);
+            System.out.println("averageVoteCost:  " + averageVoteCost);
+
+            mLines.add("==============================setting2==============================  " );
+            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h );
+            mLines.add("averageGACost:  " + averageGACost);
+            mLines.add("averageVoteCost:  " + averageVoteCost);
+        }
+        int h = 0;
+        for (int ep = 0; ep < 5; ep ++) {
+            // int serverNumber = 0;
+            serverNumber = 150;
+            d = 1;
+            // int h = 0;
+            h++;
+            int population = 25;int[][] dism = GraphGenerate(serverNumber, d);
+            ModelSetup(serverNumber, dism, h);
+            double totalGACost = 0;
+            double totalVoteCost = 0;
+            for (int i = 0; i < 10; i++) {
+                runJGAPGACost(population, serverNumber);
+                if (GAFitness == 0) break;
+                runECGreedyVoteCost();
+                totalGACost += mGACost;
+                totalVoteCost += mECGreedyVoteCost;
+            }
+            double averageGACost = totalGACost / 10;
+            double averageVoteCost = totalVoteCost / 10;
+            System.out.println("averageGACost:  " + averageGACost);
+            System.out.println("averageVoteCost:  " + averageVoteCost);
+
+            mLines.add("==============================setting3==============================  " );
+            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h );
+            mLines.add("averageGACost:  " + averageGACost);
+            mLines.add("averageVoteCost:  " + averageVoteCost);
         }
     }
 
-    public static void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
+    // public static void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
+    //     // mGACost = mGAModel.getmGACost();
+    //     long start = System.currentTimeMillis();
+    //     mGAModel.runGACost(population, serverNumber, cplexSolutionList);
+    //     long end = System.currentTimeMillis();
+    //
+    //     // System.out.println("\nGAModel");
+    //     System.out.println("Time:" + (end - start) + " ms");
+    //     System.out.println();
+    // }
+
+    public static void runJGAPGACost(int populationSize, int serverNumber) throws IOException, ClassNotFoundException, InvalidConfigurationException {
+
         // mGACost = mGAModel.getmGACost();
         long start = System.currentTimeMillis();
-        mGAModel.runGACost(population, serverNumber, cplexSolutionList);
+        mJGAPGAModel.runGACost(populationSize, serverNumber);
         long end = System.currentTimeMillis();
+        mGACost = mJGAPGAModel.getCost();
+        GAFitness = mJGAPGAModel.getFitness();
 
         // System.out.println("\nGAModel");
-        System.out.println("Time:" + (end - start) + " ms");
-        System.out.println();
-    }
-
-    public static void runJGAPGACost(int populationSize, int serverNumber, List<Integer> mECGreedyVoteServers) throws IOException, ClassNotFoundException, InvalidConfigurationException {
-
-        // mGACost = mGAModel.getmGACost();
-        long start = System.currentTimeMillis();
-        mJGAPGAModel.runGACost(populationSize, serverNumber, mECGreedyVoteServers);
-        long end = System.currentTimeMillis();
-
-        // System.out.println("\nGAModel");
-        System.out.println("Time:" + (end - start) + " ms");
-        System.out.println();
+        // System.out.println("Time:" + (end - start) + " ms");
+        // System.out.println();
     }
 
     private static void runECGreedyVoteCost() throws ClassNotFoundException, IOException {
@@ -713,10 +779,10 @@ public class Experiments {
 
 
         // System.out.println("\nECGreedyVoteModel");
-        System.out.println("Time:" + (end - start) + " ms");
+        // System.out.println("Time:" + (end - start) + " ms");
         // System.out.println("mECGreedyVotePacketsNeeds:" + packetsNeed);
-        System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
-        System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
+        // System.out.println("mECGreedyVoteCost:" + mECGreedyVoteCost);
+        // System.out.println("mECGreedyVoteServers:" + mECGreedyVoteServers + "\n");
     }
 
     public static <T> List<T> deepCopy(List<T> src) throws IOException, ClassNotFoundException {
