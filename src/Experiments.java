@@ -726,7 +726,7 @@ public class Experiments {
             mLines.add("averageGACost:  " + averageGACost);
             mLines.add("averageVoteCost:  " + averageVoteCost);
         }
-        int h = 1;
+        int h = 0;
         for (int ep = 0; ep < 5; ep ++) {
             // int serverNumber = 0;
             serverNumber = 150;

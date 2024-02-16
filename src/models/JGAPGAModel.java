@@ -101,16 +101,41 @@ public class JGAPGAModel {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
     }
+    // 随机选择一半元素
+    private static List<Map.Entry<Integer, Integer>> getRandomHalfEntries(Map<Integer, Integer> map) {
+        List<Map.Entry<Integer, Integer>> shuffledEntries = map.entrySet().stream()
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        list -> {
+                            Collections.shuffle(list);
+                            return list.stream();
+                        }))
+                .collect(Collectors.toList());
 
-    // 从前三个最大的value中随机选择一个对应的key
+        int halfSize = shuffledEntries.size() / 2 + 1;
+
+        // System.out.println("halfSize " + halfSize);
+
+        return shuffledEntries.stream().limit(halfSize).collect(Collectors.toList());
+    }
+
+
+    // 获取候选服务器列表，选择最大的3个
     private static List<Integer> getCandidateServersList(Map<Integer, Integer> map, int k) {
-        // System.out.println("map: " + map);
-        return map.entrySet().stream()
+        if (map.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+
+        List<Map.Entry<Integer, Integer>> halfEntries = getRandomHalfEntries(map);
+
+        return halfEntries.stream()
                 .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
-                .limit(Math.min(k, map.size()))
+                .limit(Math.min(k, halfEntries.size()))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
     }
+
 
     // 从List中随机选择一个值
     private static int getRandomKeyFromCandidateServersList(List<Integer> valuesList) {
@@ -281,6 +306,7 @@ public class JGAPGAModel {
             while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
                 // 更新候选服务器
                 candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
+                // System.out.println("candidateServersList" + candidateServersList);
                 // System.out.println("candidateServersList : " + candidateServersList);
                 // int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
                 int newSelectedServer = getRandomKeyFromCandidateServersList(candidateServersList);
@@ -296,7 +322,7 @@ public class JGAPGAModel {
             }
             // System.out.println("SelectedServerList" + SelectedServerList);
         }
-        System.out.println("MinCostServerList" + MinCostServerList);
+        // System.out.println("MinCostServerList" + MinCostServerList);
         mSelectedServerList = MinCostServerList;
         mPacketsNeed = best_pn;
         // System.out.println("best_pn: " + mPacketsNeed);
