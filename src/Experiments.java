@@ -660,19 +660,26 @@ public class Experiments {
         for (int ep = 0; ep < 10; ep ++) {
             // int serverNumber = 0;
             serverNumber += 10;
-            double d = 2;
+            double d = 1;
             int h = 1;
-            int population = 25;int[][] dism = GraphGenerate(serverNumber, d);
+            int population = 25;
+            int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
             double totalGACost = 0;
             double totalVoteCost = 0;
             for (int i = 0; i < 10; i++) {
                 runJGAPGACost(population, serverNumber);
-                if (GAFitness == 0) System.out.println("false!!!!!!");;
+                // if (GAFitness == 0) {
+                //     System.out.println("serverNumber Problem");
+                //     System.out.println("false " + "serverNumber " + serverNumber + "d " + d + "h " + h);
+                //     System.out.println("dism" + Arrays.deepToString(dism));
+                //     // break;
+                // }
                 runECGreedyVoteCost();
                 totalGACost += mGACost;
                 totalVoteCost += mECGreedyVoteCost;
             }
+            if (GAFitness == 0) break;
             double averageGACost = totalGACost / 10;
             double averageVoteCost = totalVoteCost / 10;
             System.out.println("averageGACost:  " + averageGACost);
@@ -690,17 +697,25 @@ public class Experiments {
             // double d = 0;
             d+=1;
             int h = 1;
-            int population = 25;int[][] dism = GraphGenerate(serverNumber, d);
+            int population = 25;
+            int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
             double totalGACost = 0;
             double totalVoteCost = 0;
             for (int i = 0; i < 10; i++) {
                 runJGAPGACost(population, serverNumber);
-                if (GAFitness == 0) break;
+                // if (GAFitness == 0) {
+                //     System.out.println("density Problem");
+                //     System.out.println("false " + "serverNumber " + serverNumber + "d " + d + "h " + h);
+                //     System.out.println("dism" + Arrays.deepToString(dism));
+                //     break;
+                // }
                 runECGreedyVoteCost();
                 totalGACost += mGACost;
                 totalVoteCost += mECGreedyVoteCost;
             }
+            if (GAFitness == 0) break;
+
             double averageGACost = totalGACost / 10;
             double averageVoteCost = totalVoteCost / 10;
             System.out.println("averageGACost:  " + averageGACost);
@@ -711,20 +726,26 @@ public class Experiments {
             mLines.add("averageGACost:  " + averageGACost);
             mLines.add("averageVoteCost:  " + averageVoteCost);
         }
-        int h = 0;
+        int h = 1;
         for (int ep = 0; ep < 5; ep ++) {
             // int serverNumber = 0;
             serverNumber = 150;
             d = 1;
             // int h = 0;
             h++;
-            int population = 25;int[][] dism = GraphGenerate(serverNumber, d);
+            int population = 25;
+            int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
             double totalGACost = 0;
             double totalVoteCost = 0;
             for (int i = 0; i < 10; i++) {
                 runJGAPGACost(population, serverNumber);
-                if (GAFitness == 0) break;
+                if (GAFitness == 0) {
+                    System.out.println("hops Problem");
+                    System.out.println("false " + "serverNumber " + serverNumber + "d " + d + "h " + h);
+                    System.out.println("dism" + Arrays.deepToString(dism));
+                    break;
+                }
                 runECGreedyVoteCost();
                 totalGACost += mGACost;
                 totalVoteCost += mECGreedyVoteCost;

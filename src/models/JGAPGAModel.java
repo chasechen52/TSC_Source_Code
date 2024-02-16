@@ -226,28 +226,28 @@ public class JGAPGAModel {
         }
     }
 
-    public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
-        // 计算方法一： 最短距离中的最大距离
-        int distanceInSet = Integer.MIN_VALUE;
-        int newSelectedServerKey = 0;
-        for (Integer candidateServer : candidateServersList) {
-            int minDistanceKey = 0;
-            int distance = Integer.MAX_VALUE;
-            // 计算候选服务器到解服务器的距离
-            for (Integer selectedServer : selectedServerList) {
-                if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
-                    minDistanceKey = selectedServer;
-                    distance = mDistanceMatrix[candidateServer][selectedServer];
+        public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
+            // 计算方法一： 最短距离中的最大距离
+            int distanceInSet = Integer.MIN_VALUE;
+            int newSelectedServerKey = 0;
+            for (Integer candidateServer : candidateServersList) {
+                int minDistanceKey = 0;
+                int distance = Integer.MAX_VALUE;
+                // 计算候选服务器到解服务器的距离
+                for (Integer selectedServer : selectedServerList) {
+                    if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
+                        minDistanceKey = selectedServer;
+                        distance = mDistanceMatrix[candidateServer][selectedServer];
+                    }
                 }
+                if (distanceInSet < distance) {
+                    distanceInSet = distance;
+                    newSelectedServerKey = candidateServer;
+                }
+                // System.out.println("newSelectedServerKey" + newSelectedServerKey);
             }
-            if (distanceInSet < distance) {
-                distanceInSet = distance;
-                newSelectedServerKey = candidateServer;
-            }
-            // System.out.println("newSelectedServerKey" + newSelectedServerKey);
+            return newSelectedServerKey;
         }
-        return newSelectedServerKey;
-    }
 
     public void updatePacketsNeed(int newSelectedServerKey) {
         for (int server = 0; server < mServersNumber; ++server) {  // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
@@ -264,7 +264,7 @@ public class JGAPGAModel {
         ConvertDistoAccAndCalDegree(); // 首先进行矩阵转化，度计算
         double min_cost = Double.MAX_VALUE;
         int best_pn = 2; // 最低cost对应的数据块数
-        int candidatesNumber = 3;
+        int candidatesNumber = 5;
         List<Integer> MinCostServerList = new ArrayList<>();
         // System.out.println("degreesMap" + degreesMap);
         for (int m = 2; m <= mapMinDegree; ++m) {
@@ -280,8 +280,10 @@ public class JGAPGAModel {
             mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
             while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
                 // 更新候选服务器
-                candidateServersList = getCandidateServersList(mDegrees, 1);
-                int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
+                candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
+                // System.out.println("candidateServersList : " + candidateServersList);
+                // int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
+                int newSelectedServer = getRandomKeyFromCandidateServersList(candidateServersList);
                 SelectedServerList.add(newSelectedServer);
                 updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
                 mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
@@ -294,6 +296,7 @@ public class JGAPGAModel {
             }
             // System.out.println("SelectedServerList" + SelectedServerList);
         }
+        System.out.println("MinCostServerList" + MinCostServerList);
         mSelectedServerList = MinCostServerList;
         mPacketsNeed = best_pn;
         // System.out.println("best_pn: " + mPacketsNeed);
