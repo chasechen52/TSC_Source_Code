@@ -251,28 +251,28 @@ public class JGAPGAModel {
         }
     }
 
-        public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
-            // 计算方法一： 最短距离中的最大距离
-            int distanceInSet = Integer.MIN_VALUE;
-            int newSelectedServerKey = 0;
-            for (Integer candidateServer : candidateServersList) {
-                int minDistanceKey = 0;
-                int distance = Integer.MAX_VALUE;
-                // 计算候选服务器到解服务器的距离
-                for (Integer selectedServer : selectedServerList) {
-                    if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
-                        minDistanceKey = selectedServer;
-                        distance = mDistanceMatrix[candidateServer][selectedServer];
-                    }
+    public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
+        // 计算方法一： 最短距离中的最大距离
+        int distanceInSet = Integer.MIN_VALUE;
+        int newSelectedServerKey = 0;
+        for (Integer candidateServer : candidateServersList) {
+            int minDistanceKey = 0;
+            int distance = Integer.MAX_VALUE;
+            // 计算候选服务器到解服务器的距离
+            for (Integer selectedServer : selectedServerList) {
+                if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
+                    minDistanceKey = selectedServer;
+                    distance = mDistanceMatrix[candidateServer][selectedServer];
                 }
-                if (distanceInSet < distance) {
-                    distanceInSet = distance;
-                    newSelectedServerKey = candidateServer;
-                }
-                // System.out.println("newSelectedServerKey" + newSelectedServerKey);
             }
-            return newSelectedServerKey;
+            if (distanceInSet < distance) {
+                distanceInSet = distance;
+                newSelectedServerKey = candidateServer;
+            }
+            // System.out.println("newSelectedServerKey" + newSelectedServerKey);
         }
+        return newSelectedServerKey;
+    }
 
     public void updatePacketsNeed(int newSelectedServerKey) {
         for (int server = 0; server < mServersNumber; ++server) {  // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
@@ -282,6 +282,17 @@ public class JGAPGAModel {
                     mDataPacketsNeed.put(server, packetsNeed - 1);
                 }
             }
+        }
+    }
+
+    public void updateMDegreesMap(Map<Integer, Integer> mDegrees, int selectedServer) {
+        for (int i = 0; i < mServersNumber; ++i) {
+            boolean isDeleted = mDegrees.containsKey(selectedServer);
+            if (isDeleted && mDistanceMatrix[i][selectedServer] <= mhops) // 当最短距离小于hops时，可访问节点数自增
+            {
+                mDegrees.put(i, mDegrees.get(i) - 1);
+            }
+            // mDegrees.put(i, access); // access为广义上的度/
         }
     }
 
@@ -303,6 +314,7 @@ public class JGAPGAModel {
             SelectedServerList.add(initialServer);
             updatePacketsNeed(initialServer); // 选择后更新每个节点所需要的数据包数量
             mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
+            updateMDegreesMap(mDegrees, initialServer);
             while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
                 // 更新候选服务器
                 candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
@@ -313,6 +325,7 @@ public class JGAPGAModel {
                 SelectedServerList.add(newSelectedServer);
                 updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
                 mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
+                updateMDegreesMap(mDegrees,newSelectedServer);
             }
             cost = (double) SelectedServerList.size() / (double) m;
             if (m >= 2 && cost < min_cost) {
@@ -435,13 +448,11 @@ public class JGAPGAModel {
     }
 
 
-    public double getCost()
-    {
+    public double getCost() {
         return mCost;
     }
 
-    public double getFitness()
-    {
+    public double getFitness() {
         return mFitness;
     }
 }
