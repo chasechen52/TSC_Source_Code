@@ -58,8 +58,8 @@ public class Experiments {
 
         // runSettings();
         // runExample();
-        // runGAExample();
-        runJGAPGAExample();
+        runGAExample();
+        // runJGAPGAExample();
         try {
             Calendar cal = Calendar.getInstance();
             SimpleDateFormat sdf = new SimpleDateFormat("dd-HH-mm");
@@ -632,28 +632,28 @@ public class Experiments {
 
     }
 
-    // private static void runGAExample() throws ClassNotFoundException, IOException {
-    //     int serverNumber = 20;
-    //     double d = 2;
-    //     int h = 1;
-    //     int population = 100;
-    //     while (true) {
-    //         int[][] dism = GraphGenerate(serverNumber, d);
-    //         ModelSetup(serverNumber, dism, h);
-    //         getECCplexSolution();
-    //         System.out.println("CplexSolutionList    " + CplexSolutionList);
-    //         runGACost(population, serverNumber, CplexSolutionList);
-    //         // runJGAPGACost(population, serverNumber, CplexSolutionList);
-    //         runECGreedyVoteCost();
-    //         // runECCplexCost();
-    //         break;
-    //         // if (mGACost <= mReplicaCost * 0.75) {
-    //         //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
-    //         //     break;
-    //         // }
-    //
-    //     }
-    // }
+    private static void runGAExample() throws ClassNotFoundException, IOException {
+        int serverNumber = 20;
+        double d = 2;
+        int h = 1;
+        int population = 100;
+        while (true) {
+            int[][] dism = GraphGenerate(serverNumber, d);
+            ModelSetup(serverNumber, dism, h);
+            getECCplexSolution();
+            System.out.println("CplexSolutionList    " + CplexSolutionList);
+            runGACost(population, serverNumber, CplexSolutionList);
+            // runJGAPGACost(population, serverNumber, CplexSolutionList);
+            runECGreedyVoteCost();
+            // runECCplexCost();
+            break;
+            // if (mGACost <= mReplicaCost * 0.75) {
+            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
+            //     break;
+            // }
+
+        }
+    }
 
     private static void runJGAPGAExample() throws ClassNotFoundException, IOException, InvalidConfigurationException {
         int serverNumber = 0;
@@ -767,16 +767,16 @@ public class Experiments {
         }
     }
 
-    // public static void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
-    //     // mGACost = mGAModel.getmGACost();
-    //     long start = System.currentTimeMillis();
-    //     mGAModel.runGACost(population, serverNumber, cplexSolutionList);
-    //     long end = System.currentTimeMillis();
-    //
-    //     // System.out.println("\nGAModel");
-    //     System.out.println("Time:" + (end - start) + " ms");
-    //     System.out.println();
-    // }
+    public static void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
+        // mGACost = mGAModel.getmGACost();
+        long start = System.currentTimeMillis();
+        mGAModel.runGACost(population, serverNumber, cplexSolutionList);
+        long end = System.currentTimeMillis();
+
+        // System.out.println("\nGAModel");
+        System.out.println("Time:" + (end - start) + " ms");
+        System.out.println();
+    }
 
     public static void runJGAPGACost(int populationSize, int serverNumber) throws IOException, ClassNotFoundException, InvalidConfigurationException {
 

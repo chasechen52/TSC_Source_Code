@@ -226,19 +226,19 @@ public class GAModel {
         // double b = 2.5;
         // double c = 1;
 
-        double b = 1000;
+        double b = 1;
         // double isFeasibleSolutionValue = isFeasibleSolution ? 1 : -1;
         // dataBenefit = 1 / dataBenefit;
         // double adaptationItem = a * dataCost + b * N + c *  1 / M;
         // 适应项：
-        double adaptationItem = a * N * (1 + (double) 1 / M);
+        double adaptationItem = a * N / M;
         // 惩罚项：不可行的节点数 / 总服务器数
-        double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
-        fitness = adaptationItem + penaltyItem;
+        double penaltyItem = b * seversWithoutEnoughData;
+        fitness = 1 / (adaptationItem + penaltyItem);
         if (isFeasibleSolution) {
             // System.out.println("可行解： " + "M=" +M + ",  数据分布：" + data_placement_chromosome);
         }
-        return -fitness;
+        return fitness;
     }
     // 为1的度取倒数 1/k ，度的倒数之和相加
     // 整个演化过程
@@ -274,11 +274,23 @@ public class GAModel {
 
         Engine<IntegerGene, Double> engine = Engine.builder(GAModel::fitness, PLSolution)
                 // .constraint(new SolutionConstraint())
-                .offspringFraction(0.8)
-                .survivorsFraction(0.2)
+                // .offspringFraction(0.8)
+                // .survivorsFraction(0.2)
                 .populationSize(population)
-                .selector(new TournamentSelector<>()) // 选择
+                .offspringSelector(new EliteSelector<>()) // 选择
                 .alterers(new Mutator<>(0.2))  // 变异概率0.2
+                .constraint(new Constraint<IntegerGene, Double>() {
+                    @Override
+                    public boolean test(Phenotype<IntegerGene, Double> individual) {
+                        System.out.println();
+                        return false;
+                    }
+
+                    @Override
+                    public Phenotype<IntegerGene, Double> repair(Phenotype<IntegerGene, Double> individual, long generation) {
+                        return null;
+                    }
+                })
                 .build();
 
 
@@ -289,7 +301,7 @@ public class GAModel {
                 .limit(Limits.bySteadyFitness(100))
                 .peek(Statistics)
                 .map((EvolutionResult) -> {
-                    System.out.println("EvolutionResult:   " +  EvolutionResult);
+                    // System.out.println("EvolutionResult:   " +  EvolutionResult);
                     return EvolutionResult;
                 })
                 .collect(EvolutionResult.toBestEvolutionResult());
