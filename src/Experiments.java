@@ -662,7 +662,7 @@ public class Experiments {
             serverNumber += 10;
             double d = 1;
             int h = 1;
-            int population = 25;
+            int population = 30;
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
             double totalGACost = 0;
@@ -679,16 +679,19 @@ public class Experiments {
                 totalGACost += mGACost;
                 totalVoteCost += mECGreedyVoteCost;
             }
-            if (GAFitness == 0) break;
+            // if (GAFitness == 0) break;
             double averageGACost = totalGACost / 10;
             double averageVoteCost = totalVoteCost / 10;
-            System.out.println("averageGACost:  " + averageGACost);
-            System.out.println("averageVoteCost:  " + averageVoteCost);
+            // System.out.println("averageGACost:  " + averageGACost);
+            // System.out.println("averageVoteCost:  " + averageVoteCost);
 
             mLines.add("==============================setting1==============================  " );
             mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h );
+            if (GAFitness == 0) mLines.add("fitness: 0  ");
             mLines.add("averageGACost:  " + averageGACost);
             mLines.add("averageVoteCost:  " + averageVoteCost);
+
+
         }
         int d = 0;
         for (int ep = 0; ep < 5; ep ++) {
@@ -718,11 +721,12 @@ public class Experiments {
 
             double averageGACost = totalGACost / 10;
             double averageVoteCost = totalVoteCost / 10;
-            System.out.println("averageGACost:  " + averageGACost);
-            System.out.println("averageVoteCost:  " + averageVoteCost);
+            // System.out.println("averageGACost:  " + averageGACost);
+            // System.out.println("averageVoteCost:  " + averageVoteCost);
 
             mLines.add("==============================setting2==============================  " );
             mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h );
+            if (GAFitness == 0) mLines.add("fitness: 0  ");;
             mLines.add("averageGACost:  " + averageGACost);
             mLines.add("averageVoteCost:  " + averageVoteCost);
         }
@@ -740,23 +744,24 @@ public class Experiments {
             double totalVoteCost = 0;
             for (int i = 0; i < 10; i++) {
                 runJGAPGACost(population, serverNumber);
-                if (GAFitness == 0) {
-                    System.out.println("hops Problem");
-                    System.out.println("false " + "serverNumber " + serverNumber + "d " + d + "h " + h);
-                    System.out.println("dism" + Arrays.deepToString(dism));
-                    break;
-                }
+                // if (GAFitness == 0) {
+                //     System.out.println("hops Problem");
+                //     System.out.println("false " + "serverNumber " + serverNumber + "d " + d + "h " + h);
+                //     System.out.println("dism" + Arrays.deepToString(dism));
+                //     break;
+                // }
                 runECGreedyVoteCost();
                 totalGACost += mGACost;
                 totalVoteCost += mECGreedyVoteCost;
             }
             double averageGACost = totalGACost / 10;
             double averageVoteCost = totalVoteCost / 10;
-            System.out.println("averageGACost:  " + averageGACost);
-            System.out.println("averageVoteCost:  " + averageVoteCost);
+            // System.out.println("averageGACost:  " + averageGACost);
+            // System.out.println("averageVoteCost:  " + averageVoteCost);
 
             mLines.add("==============================setting3==============================  " );
             mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h );
+            if (GAFitness == 0) mLines.add("fitness: 0  ");;
             mLines.add("averageGACost:  " + averageGACost);
             mLines.add("averageVoteCost:  " + averageVoteCost);
         }

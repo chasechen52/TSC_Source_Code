@@ -93,14 +93,6 @@ public class JGAPGAModel {
         return getMapMaxValueKey(mDegrees);
     }
 
-    public List getTopKDegreesKeyList(Map<Integer, Integer> map) { // 选择Top-K 个度数最大服务器
-        // System.out.println("map" + map);
-        return map.entrySet().stream()
-                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
-                .limit(3)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
-    }
     // 随机选择一半元素
     private static List<Map.Entry<Integer, Integer>> getRandomHalfEntries(Map<Integer, Integer> map) {
         List<Map.Entry<Integer, Integer>> shuffledEntries = map.entrySet().stream()
@@ -120,18 +112,16 @@ public class JGAPGAModel {
     }
 
 
-    // 获取候选服务器列表，选择最大的3个
-    private static List<Integer> getCandidateServersList(Map<Integer, Integer> map, int k) {
+    // 获取候选服务器列表，选择最大的topK个
+    private static List<Integer> getCandidateServersList(Map<Integer, Integer> map, int topK) {
         if (map.isEmpty()) {
             return Collections.emptyList();
         }
-
-
         List<Map.Entry<Integer, Integer>> halfEntries = getRandomHalfEntries(map);
 
         return halfEntries.stream()
                 .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
-                .limit(Math.min(k, halfEntries.size()))
+                .limit(Math.min(topK, halfEntries.size()))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
     }
@@ -220,11 +210,11 @@ public class JGAPGAModel {
                 }
             }
 
-            double a = Math.pow(mServersNumber, 3);
+            double a = Math.pow(mServersNumber, 2);
             // double b = 10000;
             // 适应项：
             // double adaptationItem = a * N * (1 + (double) 1 / M);
-            double adaptationItem = a * Math.pow(M / N, 3);
+            double adaptationItem = a * Math.pow(M / N, 2);
             // 惩罚项：不可行的节点数 / 总服务器数
             double penaltyItem = isFeasibleSolution ? 1 : 0;
             // double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
@@ -310,22 +300,22 @@ public class JGAPGAModel {
             double cost;
             List<Integer> SelectedServerList = new ArrayList<>();
             List<Integer> candidateServersList = getCandidateServersList(mDegrees, candidatesNumber); // step1: 获取候选服务器列表
-            int initialServer = getRandomKeyFromCandidateServersList(candidateServersList); // 在候选服务器列表中随机选择一个服务器加入解服务器列表
+            int initialServer = getLongestDistanceKey(candidateServersList, SelectedServerList); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
             SelectedServerList.add(initialServer);
             updatePacketsNeed(initialServer); // 选择后更新每个节点所需要的数据包数量
             mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
-            updateMDegreesMap(mDegrees, initialServer);
+            // updateMDegreesMap(mDegrees, initialServer);
             while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
                 // 更新候选服务器
                 candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
                 // System.out.println("candidateServersList" + candidateServersList);
                 // System.out.println("candidateServersList : " + candidateServersList);
                 // int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
-                int newSelectedServer = getRandomKeyFromCandidateServersList(candidateServersList);
+                int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
                 SelectedServerList.add(newSelectedServer);
                 updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
                 mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
-                updateMDegreesMap(mDegrees,newSelectedServer);
+                // updateMDegreesMap(mDegrees,newSelectedServer);
             }
             cost = (double) SelectedServerList.size() / (double) m;
             if (m >= 2 && cost < min_cost) {
@@ -374,11 +364,11 @@ public class JGAPGAModel {
         configuration.setFitnessFunction(fitnessFunction);
 
         // 设置演化方式为精英选择
-        BestChromosomesSelector selectionMethod = new BestChromosomesSelector(configuration, 0.1);
+        WeightedRouletteSelector selectionMethod = new WeightedRouletteSelector(configuration);
         configuration.addNaturalSelector(selectionMethod, false);
 
         // 设置变异概率为0.2
-        int mutationRate = 20;
+        int mutationRate = 10;
         MutationOperator mutationOperator = new MutationOperator(configuration, mutationRate);
         configuration.addGeneticOperator(mutationOperator);
 
@@ -402,7 +392,7 @@ public class JGAPGAModel {
         // 使用Genotype.randomInitialGenotype()创建一个随机初始化的个体的基因型
         Genotype genotype = Genotype.randomInitialGenotype(configuration);
         Population population = genotype.getPopulation();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 15; i++) {
             getReliableSolutions();
             ConvertDistoAccAndCalDegree(); // 由于每次循环对mDegrees进行了删除，因此每次都需要重新生成mDegrees
             IChromosome feasible_solution = convertSolutionToChromosome(configuration);
@@ -410,7 +400,7 @@ public class JGAPGAModel {
         }
 
         // 执行一定数量的进化操作
-        int numberOfEvolutions = 100; // 你可以根据需要设置进化的次数
+        int numberOfEvolutions = 200; // 你可以根据需要设置进化的次数
         for (int i = 0; i < numberOfEvolutions; i++) {
             genotype.evolve();
         }
