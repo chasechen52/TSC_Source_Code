@@ -220,29 +220,20 @@ public class GAModel {
                 // System.out.println(mRequired);
             }
         }
-        // dataCost = -N;
-        // 适应度：å数据增益 + ß成本 + ∂是否可行解
-        double a = 1;
-        // double b = 2.5;
-        // double c = 1;
-
-        double b = 1;
-        // double isFeasibleSolutionValue = isFeasibleSolution ? 1 : -1;
-        // dataBenefit = 1 / dataBenefit;
-        // double adaptationItem = a * dataCost + b * N + c *  1 / M;
+        double a = Math.pow(mServersNumber, 3);
+        double b = 10000;
         // 适应项：
-        double adaptationItem = a * N / M;
+        // double adaptationItem = a * N * (1 + (double) 1 / M);
+        double adaptationItem = N / M;
         // 惩罚项：不可行的节点数 / 总服务器数
+        // double penaltyItem = isFeasibleSolution ? 1 : 0;
         double penaltyItem = b * seversWithoutEnoughData;
-        fitness = 1 / (adaptationItem + penaltyItem);
+        fitness = adaptationItem + penaltyItem;
         if (isFeasibleSolution) {
             // System.out.println("可行解： " + "M=" +M + ",  数据分布：" + data_placement_chromosome);
         }
         return fitness;
     }
-    // 为1的度取倒数 1/k ，度的倒数之和相加
-    // 整个演化过程
-    // 最优解和其他解的区别
 
     public void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
         // 首先进行矩阵转化，计算度
@@ -262,13 +253,27 @@ public class GAModel {
 
         System.out.println("chromosome" + chromosome);
 
+        // 创建初始种群
+        Genotype<IntegerGene>[] genotypes = new Genotype[15];
+        for (int i = 0; i < 15; i++) {
+            IntegerGene MGene = IntegerGene.of(2, 2 ,getMapMinValue(mDegrees));
+            IntegerChromosome M = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1).newInstance(ISeq.of(MGene));
+            // 将两个染色体连接起来，创建双染色体基因型
+            Genotype<IntegerGene> genotype = Genotype.of(M, chromosome);
+            genotypes[i] = genotype;
+        }
+        ISeq<Genotype<IntegerGene>> initialPopulation = ISeq.of(genotypes);
+
+
+
+
+
         IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, serverNumber);
         IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1);
 
         ISeq<Chromosome<IntegerGene>> PLSolution222 = Genotype.of(M_number_chromosome, chromosome).toSeq();
         Genotype<IntegerGene> PLSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
-        System.out.println("PLSolution" + PLSolution);
-
+        // System.out.println("PLSolution" + PLSolution);
 
 
 
@@ -277,17 +282,54 @@ public class GAModel {
                 // .offspringFraction(0.8)
                 // .survivorsFraction(0.2)
                 .populationSize(population)
-                .offspringSelector(new EliteSelector<>()) // 选择
+                .optimize(Optimize.MINIMUM) //
+                .offspringSelector(new TournamentSelector<>()) // 选择
                 .alterers(new Mutator<>(0.2))  // 变异概率0.2
                 .constraint(new Constraint<IntegerGene, Double>() {
                     @Override
                     public boolean test(Phenotype<IntegerGene, Double> individual) {
-                        System.out.println();
-                        return false;
+                        // System.out.println("individual: "  + individual);
+                        Chromosome<IntegerGene> M_number_chromosome = individual.getGenotype().getChromosome(0);
+                        Chromosome<IntegerGene> data_placement_chromosome = individual.getGenotype().getChromosome(1);
+                        double N = 0;
+                        int M = M_number_chromosome.getGene(0).intValue();
+                        boolean isFeasibleSolution = true;
+
+                        // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
+                        // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
+                        for (int i = 0; i < mServersNumber; i++) {
+                            N += data_placement_chromosome.getGene(i).intValue();
+                        }
+                        if (N < M) {
+                            // 如果总数据块不够则直接判定不可行
+                            isFeasibleSolution = false;
+                        } else {
+                            // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
+                            for (int i = 0; i < mServersNumber; i++) {
+                                int mRequired = M;
+                                for (int j = 0; j < mServersNumber; j++) {
+                                    boolean canAccess = mAccessMatrix[i][j] == 1;
+                                    boolean hasData = data_placement_chromosome.getGene(j).intValue() == 1;
+                                    if (canAccess && hasData) --mRequired;
+                                    if (mRequired == 0) break;
+                                }
+                            }
+                        }
+                        return isFeasibleSolution;
                     }
 
                     @Override
                     public Phenotype<IntegerGene, Double> repair(Phenotype<IntegerGene, Double> individual, long generation) {
+                        boolean isNeedRepair = !test(individual);
+                        if (isNeedRepair) {
+                            IntegerGene MGene = IntegerGene.of(2, 2 ,getMapMinValue(mDegrees));
+                            IntegerChromosome M = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1).newInstance(ISeq.of(MGene));
+                            // 将两个染色体连接起来，创建双染色体基因型
+                            Genotype<IntegerGene> genotype = Genotype.of(M, chromosome);
+                            // System.out.println("individual222222222 : " + individual);
+
+                            return Phenotype.of(genotype, generation);
+                        }
                         return null;
                     }
                 })
@@ -297,7 +339,7 @@ public class GAModel {
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
 
-        EvolutionResult<IntegerGene, Double> result = engine.stream()
+        EvolutionResult<IntegerGene, Double> result = engine.stream(initialPopulation)
                 .limit(Limits.bySteadyFitness(100))
                 .peek(Statistics)
                 .map((EvolutionResult) -> {
@@ -312,7 +354,7 @@ public class GAModel {
             N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).intValue();
         }
 
-        // System.out.println("statistics \n" + Statistics);
+        System.out.println("statistics \n" + Statistics);
         System.out.println("Best Solution: " + result.getBestPhenotype());
         System.out.println("GAModel Cost: " + N/M);
 

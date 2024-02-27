@@ -433,8 +433,8 @@ public class JGAPGAModel {
         }
 
         Configuration.reset();
-        // System.out.println("m:  " + fittestChromosome.getGene(0));
-        // System.out.println("GAServerList" + GAServerList);
+        System.out.println("m:  " + fittestChromosome.getGene(0));
+        System.out.println("GAServerList" + GAServerList);
     }
 
 

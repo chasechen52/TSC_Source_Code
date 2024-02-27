@@ -633,10 +633,10 @@ public class Experiments {
     }
 
     private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 20;
-        double d = 2;
-        int h = 1;
-        int population = 100;
+        int serverNumber = 50;
+        double d = 1;
+        int h = 2;
+        int population = 30;
         while (true) {
             int[][] dism = GraphGenerate(serverNumber, d);
             ModelSetup(serverNumber, dism, h);
@@ -696,7 +696,7 @@ public class Experiments {
         int d = 0;
         for (int ep = 0; ep < 5; ep ++) {
             // int serverNumber = 0;
-            serverNumber = 150;
+            serverNumber = 10;
             // double d = 0;
             d+=1;
             int h = 1;
