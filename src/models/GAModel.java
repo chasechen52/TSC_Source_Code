@@ -7,6 +7,8 @@ import io.jenetics.util.ISeq;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 public class GAModel {
 
@@ -36,7 +38,7 @@ public class GAModel {
 
         mAccessMatrix = new int[mServersNumber][mServersNumber];
         mSelectedServerList = new ArrayList<>();
-        mDegrees = new HashMap<>();
+        mDegrees = new ConcurrentHashMap<>();
         mDataPacketsNeed = new HashMap<>();
     }
 
@@ -148,7 +150,7 @@ public class GAModel {
         return array;
     }
 
-    private static List<Map.Entry<Integer, Integer>> getRandomHalfEntries(Map<Integer, Integer> map) {
+    private static List<Map.Entry<Integer, Integer>> getRandomHalfEntries(Map<Integer, Integer> map, int topK) {
         List<Map.Entry<Integer, Integer>> shuffledEntries = map.entrySet().stream()
                 .collect(Collectors.collectingAndThen(
                         Collectors.toList(),
@@ -158,11 +160,11 @@ public class GAModel {
                         }))
                 .collect(Collectors.toList());
 
-        int halfSize = shuffledEntries.size() / 2 + 1;
+        int halfSize = shuffledEntries.size() / 2;
 
-        // System.out.println("halfSize " + halfSize);
-
-        return shuffledEntries.stream().limit(halfSize).collect(Collectors.toList());
+        return shuffledEntries.stream()
+                .limit(halfSize < topK ? shuffledEntries.size() : halfSize)
+                .collect(Collectors.toList());
     }
 
 
@@ -170,7 +172,7 @@ public class GAModel {
         if (map.isEmpty()) {
             return Collections.emptyList();
         }
-        List<Map.Entry<Integer, Integer>> halfEntries = getRandomHalfEntries(map);
+        List<Map.Entry<Integer, Integer>> halfEntries = getRandomHalfEntries(map, topK);
 
         return halfEntries.stream()
                 .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
@@ -204,26 +206,22 @@ public class GAModel {
     }
 
     public void updatePacketsNeed(int newSelectedServerKey) {
-        for (int server = 0; server < mServersNumber; ++server) {  // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
+        // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
+        for (int server = 0; server < mServersNumber; ++server) {
             if (mAccessMatrix[newSelectedServerKey][server] == 1) {
                 int packetsNeed = mDataPacketsNeed.get(server);
                 if (packetsNeed > 0) {
                     mDataPacketsNeed.put(server, packetsNeed - 1);
                     // System.out.println("mDataPacketsNeed: " + mDataPacketsNeed);
                 }
-                if (mDegrees.containsKey(server) && server != newSelectedServerKey) {
-                    int degree = mDegrees.get(server);
-                    if (degree > 0) {
-                        mDegrees.put(server, degree - 1); // 更新被选节点周围非数据节点的度数
-                    }
-                }
             }
         }
     }
 
     public void updateMDegreesMap(Map<Integer, Integer> mDegrees, int selectedServer) {
+        // System.out.println("mDegrees" + mDegrees);
         for (int i = 0; i < mServersNumber; ++i) {
-            boolean isDeleted = mDegrees.containsKey(selectedServer);
+            boolean isDeleted = mDegrees.containsKey(selectedServer) && mDegrees.containsKey(i);
             if (isDeleted && mDistanceMatrix[i][selectedServer] <= mhops) // 当最短距离小于hops时，可访问节点数自增
             {
                 mDegrees.put(i, mDegrees.get(i) - 1);
@@ -233,7 +231,7 @@ public class GAModel {
     }
 
     public void getReliableSolutions() throws IOException, ClassNotFoundException {
-        ConvertDistoAccAndCalDegree(); // 首先进行矩阵转化，度计算
+        // ConvertDistoAccAndCalDegree(); // 首先进行矩阵转化，度计算
         double min_cost = Double.MAX_VALUE;
         int best_pn = 2; // 最低cost对应的数据块数
         int candidatesNumber = 5;
@@ -261,7 +259,7 @@ public class GAModel {
                 SelectedServerList.add(newSelectedServer);
                 updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
                 mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
-                updateMDegreesMap(mDegrees, newSelectedServer);
+                // updateMDegreesMap(mDegrees, newSelectedServer);
             }
             cost = (double) SelectedServerList.size() / (double) m;
             if (m >= 2 && cost < min_cost) {
@@ -280,6 +278,7 @@ public class GAModel {
     }
 
     public Genotype<IntegerGene> getSolutionGenotype() throws IOException, ClassNotFoundException {
+        ConvertDistoAccAndCalDegree();
         getReliableSolutions();
         IntegerGene[] geneArray = initSolutionGeneArray(mSelectedServerList);
         // System.out.println("mSelectedServerList: " + mSelectedServerList);
@@ -369,57 +368,59 @@ public class GAModel {
                 // .constraint(new SolutionConstraint())
                 // .offspringFraction(0.8)
                 // .survivorsFraction(0.2)
-                .populationSize(population)
-                .optimize(Optimize.MAXIMUM) //
-                .offspringSelector(new EliteSelector<>()) // 选择
+                // .populationSize(population)
                 .alterers(new Mutator<>(0.2))  // 变异概率0.2
-                .constraint(new Constraint<IntegerGene, Double>() {
-                    @Override
-                    public boolean test(Phenotype<IntegerGene, Double> individual) {
-                        // System.out.println("individual: "  + individual);
-                        Chromosome<IntegerGene> M_number_chromosome = individual.getGenotype().getChromosome(0);
-                        Chromosome<IntegerGene> data_placement_chromosome = individual.getGenotype().getChromosome(1);
-                        double N = 0;
-                        int M = M_number_chromosome.getGene(0).intValue();
-                        boolean isFeasibleSolution = true;
-
-                        // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
-                        // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
-                        for (int i = 0; i < mServersNumber; i++) {
-                            N += data_placement_chromosome.getGene(i).intValue();
-                        }
-                        if (N < M) {
-                            // 如果总数据块不够则直接判定不可行
-                            isFeasibleSolution = false;
-                        } else {
-                            // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
-                            for (int i = 0; i < mServersNumber; i++) {
-                                int mRequired = M;
-                                for (int j = 0; j < mServersNumber; j++) {
-                                    boolean canAccess = mAccessMatrix[i][j] == 1;
-                                    boolean hasData = data_placement_chromosome.getGene(j).intValue() == 1;
-                                    if (canAccess && hasData) --mRequired;
-                                    if (mRequired == 0) break;
-                                }
-                            }
-                        }
-                        return isFeasibleSolution;
-                    }
-
-                    @Override
-                    public Phenotype<IntegerGene, Double> repair(Phenotype<IntegerGene, Double> individual, long generation) {
-                        boolean isNeedRepair = !test(individual);
-                        if (isNeedRepair) {
-                            System.out.println(111111111);
-                            try {
-                                return Phenotype.of(getSolutionGenotype(), generation);
-                            } catch (IOException | ClassNotFoundException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                        return null;
-                    }
-                })
+                .offspringFraction(0.3) // 产生子代的比例
+                .optimize(Optimize.MAXIMUM) //
+                .offspringSelector(new TournamentSelector<>()) // 选择参与交叉变异
+                .survivorsSelector(new TournamentSelector<>()) // 选择存活个体
+                // .constraint(new Constraint<IntegerGene, Double>() {
+                //     @Override
+                //     public boolean test(Phenotype<IntegerGene, Double> individual) {
+                //         // System.out.println("individual: "  + individual);
+                //         Chromosome<IntegerGene> M_number_chromosome = individual.getGenotype().getChromosome(0);
+                //         Chromosome<IntegerGene> data_placement_chromosome = individual.getGenotype().getChromosome(1);
+                //         double N = 0;
+                //         int M = M_number_chromosome.getGene(0).intValue();
+                //         boolean isFeasibleSolution = true;
+                //
+                //         // 校验该数据放置策略是否可行：判断每个服务器是否能访问到足够多的数据块
+                //         // 计算N：总数据块数; 计算数据增益：该数据放置在该位置能服务的服务器数量
+                //         for (int i = 0; i < mServersNumber; i++) {
+                //             N += data_placement_chromosome.getGene(i).intValue();
+                //         }
+                //         if (N < M) {
+                //             // 如果总数据块不够则直接判定不可行
+                //             isFeasibleSolution = false;
+                //         } else {
+                //             // 总数据块数量足够，开始判断每个服务器需要的数据块是否足够
+                //             for (int i = 0; i < mServersNumber; i++) {
+                //                 int mRequired = M;
+                //                 for (int j = 0; j < mServersNumber; j++) {
+                //                     boolean canAccess = mAccessMatrix[i][j] == 1;
+                //                     boolean hasData = data_placement_chromosome.getGene(j).intValue() == 1;
+                //                     if (canAccess && hasData) --mRequired;
+                //                     if (mRequired == 0) break;
+                //                 }
+                //             }
+                //         }
+                //         return isFeasibleSolution;
+                //     }
+                //
+                //     @Override
+                //     public Phenotype<IntegerGene, Double> repair(Phenotype<IntegerGene, Double> individual, long generation) {
+                //         boolean isNeedRepair = !test(individual);
+                //         if (isNeedRepair) {
+                //             // System.out.println(111111111);
+                //             try {
+                //                 return Phenotype.of(getSolutionGenotype(), generation);
+                //             } catch (IOException | ClassNotFoundException e) {
+                //                 throw new RuntimeException(e);
+                //             }
+                //         }
+                //         return null;
+                //     }
+                // })
                 .build();
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
@@ -439,8 +440,9 @@ public class GAModel {
 
         mCost = N / M;
 
-        System.out.println("statistics \n" + Statistics);
-        System.out.println("Best Solution: " + result.getBestPhenotype());
+        // System.out.println("statistics \n" + Statistics);
+        // System.out.println("Best Solution: " + result.getBestPhenotype());
+        // System.out.println("Best Solution Fitness: " + result.getBestPhenotype().getFitness());
         // System.out.println("GAModel Cost: " + N/M);
 
     }
