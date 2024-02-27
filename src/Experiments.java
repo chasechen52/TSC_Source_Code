@@ -53,6 +53,9 @@ public class Experiments {
 
     private static double GAFitness;
 
+    private static int mGA;
+    private static int mVote;
+
 
     public static void main(String[] args) throws ClassNotFoundException, IOException, InvalidConfigurationException {
 
@@ -633,26 +636,18 @@ public class Experiments {
     }
 
     private static void runGAExample() throws ClassNotFoundException, IOException {
-        int serverNumber = 50;
-        double d = 1;
-        int h = 2;
+        int serverNumber = 150;
+        double d = 2;
+        int h = 4;
         int population = 30;
-        while (true) {
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            getECCplexSolution();
-            System.out.println("CplexSolutionList    " + CplexSolutionList);
-            runGACost(population, serverNumber, CplexSolutionList);
-            // runJGAPGACost(population, serverNumber, CplexSolutionList);
-            runECGreedyVoteCost();
-            // runECCplexCost();
-            break;
-            // if (mGACost <= mReplicaCost * 0.75) {
-            //     System.out.println("Erasure Code Cplex:" + mECCplexCost + "  " + mECCplexServers);
-            //     break;
-            // }
 
-        }
+        int[][] dism = GraphGenerate(serverNumber, d);
+        ModelSetup(serverNumber, dism, h);
+        runGACost(population, serverNumber);
+        runECGreedyVoteCost();
+
+        System.out.println("GA Cost: " + mGACost + " m: " + mGA);
+        System.out.println("Vote Cost: " + mECGreedyVoteCost + " m: " + mVote);
     }
 
     private static void runJGAPGAExample() throws ClassNotFoundException, IOException, InvalidConfigurationException {
@@ -767,11 +762,14 @@ public class Experiments {
         }
     }
 
-    public static void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
+    public static void runGACost(int population, int serverNumber) throws IOException, ClassNotFoundException {
         // mGACost = mGAModel.getmGACost();
         long start = System.currentTimeMillis();
-        mGAModel.runGACost(population, serverNumber, cplexSolutionList);
+        mGAModel.runGACost(population, serverNumber);
         long end = System.currentTimeMillis();
+
+        mGACost = mGAModel.getCost();
+        mGA = mGAModel.getPacketsNeed();
 
         // System.out.println("\nGAModel");
         System.out.println("Time:" + (end - start) + " ms");
@@ -803,7 +801,7 @@ public class Experiments {
         mReplicaCost = mECGreedyVoteModel.getReplica();
         mReplicaServers = mECGreedyVoteModel.getSelectedReplicaServers();
 
-
+        mVote = packetsNeed;
         // System.out.println("\nECGreedyVoteModel");
         // System.out.println("Time:" + (end - start) + " ms");
         // System.out.println("mECGreedyVotePacketsNeeds:" + packetsNeed);

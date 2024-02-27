@@ -2,12 +2,11 @@ package models;
 
 import io.jenetics.*;
 import io.jenetics.engine.*;
-import io.jenetics.util.Factory;
 import io.jenetics.util.ISeq;
-import org.jgap.Population;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GAModel {
 
@@ -26,6 +25,8 @@ public class GAModel {
     private static ArrayList<List> mCplexSolutionList;
 
     private int mPopulation; // 种群数量
+
+    private int mapMinDegree;
 
     public GAModel(int serversNumber, int[][] distancematrix, int hops) // 构造函数
     {
@@ -131,30 +132,15 @@ public class GAModel {
         return false;
     }
 
-    public static class DataPlacementFactory implements Factory<IntegerGene> {
-
-        public DataPlacementFactory(int populationSize, int chromosomeLength) {
-        }
-
-
-        @Override
-        public IntegerGene newInstance() {
-            System.out.println("--------------------------");
-            return null;
-        }
-    }
-
-
-    // 初始化数组的方法
-    private static IntegerGene[] initializeGeneArray(List<Integer> solution, int length) {
-        IntegerGene[] array = new IntegerGene[length];
+    private static IntegerGene[] initSolutionGeneArray(List<Integer> solution) {
+        IntegerGene[] array = new IntegerGene[mServersNumber];
         IntegerGene geneZero = IntegerGene.of(0, 0, 1);
         IntegerGene geneOne = IntegerGene.of(1, 0, 1);
 
         Arrays.fill(array, geneZero);
         // 将List中指定索引基因位置设为1
         for (int index : solution) {
-            if (index >= 0 && index < length) {
+            if (index >= 0 && index < mServersNumber) {
                 array[index] = geneOne;
             }
         }
@@ -162,20 +148,154 @@ public class GAModel {
         return array;
     }
 
+    private static List<Map.Entry<Integer, Integer>> getRandomHalfEntries(Map<Integer, Integer> map) {
+        List<Map.Entry<Integer, Integer>> shuffledEntries = map.entrySet().stream()
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        list -> {
+                            Collections.shuffle(list);
+                            return list.stream();
+                        }))
+                .collect(Collectors.toList());
 
-    // 获取自定义个体的方法
-    // private static List<Genotype<IntegerGene>> getCustomIndividuals(int chromosomeLength) {
-    //     int numberOfCustomIndividuals = 20;
-    //     List<Genotype<IntegerGene>> customIndividuals = new ArrayList<>();
-    //
-    //     for (int i = 0; i < numberOfCustomIndividuals; i++) {
-    //         // 在这里替换为你自己个性化的基因型生成逻辑
-    //         Genotype<IntegerGene> customIndividual = initializeGeneArray(chromosomeLength);
-    //         customIndividuals.add(customIndividual);
-    //     }
-    //
-    //     return customIndividuals;
-    // }
+        int halfSize = shuffledEntries.size() / 2 + 1;
+
+        // System.out.println("halfSize " + halfSize);
+
+        return shuffledEntries.stream().limit(halfSize).collect(Collectors.toList());
+    }
+
+
+    public static List<Integer> getCandidateServersList(Map<Integer, Integer> map, int topK) {
+        if (map.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Map.Entry<Integer, Integer>> halfEntries = getRandomHalfEntries(map);
+
+        return halfEntries.stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .limit(Math.min(topK, halfEntries.size()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
+
+
+    public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
+        // 计算方法一： 最短距离中的最大距离
+        int distanceInSet = Integer.MIN_VALUE;
+        int newSelectedServerKey = 0;
+        for (Integer candidateServer : candidateServersList) {
+            int minDistanceKey = 0;
+            int distance = Integer.MAX_VALUE;
+            // 计算候选服务器到解服务器的距离
+            for (Integer selectedServer : selectedServerList) {
+                if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
+                    minDistanceKey = selectedServer;
+                    distance = mDistanceMatrix[candidateServer][selectedServer];
+                }
+            }
+            if (distanceInSet < distance) {
+                distanceInSet = distance;
+                newSelectedServerKey = candidateServer;
+            }
+            // System.out.println("newSelectedServerKey" + newSelectedServerKey);
+        }
+        return newSelectedServerKey;
+    }
+
+    public void updatePacketsNeed(int newSelectedServerKey) {
+        for (int server = 0; server < mServersNumber; ++server) {  // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
+            if (mAccessMatrix[newSelectedServerKey][server] == 1) {
+                int packetsNeed = mDataPacketsNeed.get(server);
+                if (packetsNeed > 0) {
+                    mDataPacketsNeed.put(server, packetsNeed - 1);
+                    // System.out.println("mDataPacketsNeed: " + mDataPacketsNeed);
+                }
+                if (mDegrees.containsKey(server) && server != newSelectedServerKey) {
+                    int degree = mDegrees.get(server);
+                    if (degree > 0) {
+                        mDegrees.put(server, degree - 1); // 更新被选节点周围非数据节点的度数
+                    }
+                }
+            }
+        }
+    }
+
+    public void updateMDegreesMap(Map<Integer, Integer> mDegrees, int selectedServer) {
+        for (int i = 0; i < mServersNumber; ++i) {
+            boolean isDeleted = mDegrees.containsKey(selectedServer);
+            if (isDeleted && mDistanceMatrix[i][selectedServer] <= mhops) // 当最短距离小于hops时，可访问节点数自增
+            {
+                mDegrees.put(i, mDegrees.get(i) - 1);
+            }
+            // mDegrees.put(i, access); // access为广义上的度/
+        }
+    }
+
+    public void getReliableSolutions() throws IOException, ClassNotFoundException {
+        ConvertDistoAccAndCalDegree(); // 首先进行矩阵转化，度计算
+        double min_cost = Double.MAX_VALUE;
+        int best_pn = 2; // 最低cost对应的数据块数
+        int candidatesNumber = 5;
+        List<Integer> MinCostServerList = new ArrayList<>();
+        // System.out.println("degreesMap" + degreesMap);
+        for (int m = 2; m <= mapMinDegree; ++m) {
+            mDegrees.clear();
+            ConvertDistoAccAndCalDegree(); // 由于每次循环对mDegrees进行了删除，因此每次都需要重新生成mDegrees
+            initDataPacketsNeed(m); // 初始化mDataPacketsNeed
+            double cost;
+            List<Integer> SelectedServerList = new ArrayList<>();
+            List<Integer> candidateServersList = getCandidateServersList(mDegrees, candidatesNumber); // step1: 获取候选服务器列表
+            int initialServer = getLongestDistanceKey(candidateServersList, SelectedServerList); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
+            SelectedServerList.add(initialServer);
+            updatePacketsNeed(initialServer); // 选择后更新每个节点所需要的数据包数量
+            mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
+            updateMDegreesMap(mDegrees, initialServer);
+            while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
+                // 更新候选服务器
+                candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
+                // System.out.println("candidateServersList" + candidateServersList);
+                // System.out.println("candidateServersList : " + candidateServersList);
+                // int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
+                int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
+                SelectedServerList.add(newSelectedServer);
+                updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
+                mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
+                updateMDegreesMap(mDegrees, newSelectedServer);
+            }
+            cost = (double) SelectedServerList.size() / (double) m;
+            if (m >= 2 && cost < min_cost) {
+                min_cost = cost;
+                MinCostServerList = deepCopy(SelectedServerList);
+                best_pn = m;
+            }
+            // System.out.println("SelectedServerList" + SelectedServerList.size());
+        }
+        // System.out.println("MinCostServerList" + MinCostServerList);
+        mSelectedServerList = MinCostServerList;
+        mPacketsNeed = best_pn;
+
+        // System.out.println("mSelectedServerList:  " + mSelectedServerList);
+        // System.out.println("best_pn: " + mPacketsNeed);
+    }
+
+    public Genotype<IntegerGene> getSolutionGenotype() throws IOException, ClassNotFoundException {
+        getReliableSolutions();
+        IntegerGene[] geneArray = initSolutionGeneArray(mSelectedServerList);
+        // System.out.println("mSelectedServerList: " + mSelectedServerList);
+        IntegerChromosome dataPlacement_chromosome = IntegerChromosome.of(geneArray);
+        IntegerChromosome M_chromosome = IntegerChromosome.of(2, mapMinDegree, 1);
+        return Genotype.of(M_chromosome, dataPlacement_chromosome);
+    }
+
+    public ISeq<Genotype<IntegerGene>> getInitialPopulation(int populationSize) throws IOException, ClassNotFoundException {
+        Genotype<IntegerGene>[] genotypes = new Genotype[populationSize];
+        for (int i = 0; i < populationSize; i++) {
+            genotypes[i] = getSolutionGenotype();
+            // System.out.println("genotypes: " + genotypes[i].getChromosome(1));
+        }
+        return ISeq.of(genotypes);
+    }
 
 
     // Define the fitness function
@@ -220,70 +340,38 @@ public class GAModel {
                 // System.out.println(mRequired);
             }
         }
-        double a = Math.pow(mServersNumber, 3);
-        double b = 10000;
+        double a = Math.pow(mServersNumber, 4);
+        // double b = 10000;
         // 适应项：
         // double adaptationItem = a * N * (1 + (double) 1 / M);
-        double adaptationItem = N / M;
+        double adaptationItem = a * Math.pow(M / N, 4);
         // 惩罚项：不可行的节点数 / 总服务器数
-        // double penaltyItem = isFeasibleSolution ? 1 : 0;
-        double penaltyItem = b * seversWithoutEnoughData;
-        fitness = adaptationItem + penaltyItem;
+        double penaltyItem = isFeasibleSolution ? 1 : 0;
+        // double penaltyItem = b * seversWithoutEnoughData / mServersNumber;
+        fitness = adaptationItem * penaltyItem;
         if (isFeasibleSolution) {
             // System.out.println("可行解： " + "M=" +M + ",  数据分布：" + data_placement_chromosome);
         }
         return fitness;
     }
 
-    public void runGACost(int population, int serverNumber, ArrayList<List> cplexSolutionList) {
+    public void runGACost(int population, int serverNumber) throws IOException, ClassNotFoundException {
         // 首先进行矩阵转化，计算度
         ConvertDistoAccAndCalDegree();
-
-        mCplexSolutionList = cplexSolutionList;
-        // System.out.println("mCplexSolutionList" + mCplexSolutionList);
-
-        List solution = mCplexSolutionList.get(1);
-        IntegerGene[] geneArray = initializeGeneArray(solution, serverNumber);
-
-
-        // DataPlacementFactory<Genotype<IntegerGene>> DPSolutionFactory = new DataPlacementFactory();
-
-
-        IntegerChromosome chromosome = IntegerChromosome.of(geneArray);
-
-        System.out.println("chromosome" + chromosome);
-
-        // 创建初始种群
-        Genotype<IntegerGene>[] genotypes = new Genotype[15];
-        for (int i = 0; i < 15; i++) {
-            IntegerGene MGene = IntegerGene.of(2, 2 ,getMapMinValue(mDegrees));
-            IntegerChromosome M = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1).newInstance(ISeq.of(MGene));
-            // 将两个染色体连接起来，创建双染色体基因型
-            Genotype<IntegerGene> genotype = Genotype.of(M, chromosome);
-            genotypes[i] = genotype;
-        }
-        ISeq<Genotype<IntegerGene>> initialPopulation = ISeq.of(genotypes);
-
-
-
-
+        mapMinDegree = getMapMinValue(mDegrees);
 
         IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, serverNumber);
         IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1);
-
-        ISeq<Chromosome<IntegerGene>> PLSolution222 = Genotype.of(M_number_chromosome, chromosome).toSeq();
         Genotype<IntegerGene> PLSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
         // System.out.println("PLSolution" + PLSolution);
-
-
 
         Engine<IntegerGene, Double> engine = Engine.builder(GAModel::fitness, PLSolution)
                 // .constraint(new SolutionConstraint())
                 // .offspringFraction(0.8)
                 // .survivorsFraction(0.2)
                 .populationSize(population)
-                .optimize(Optimize.MINIMUM) //
-                .offspringSelector(new TournamentSelector<>()) // 选择
+                .optimize(Optimize.MAXIMUM) //
+                .offspringSelector(new EliteSelector<>()) // 选择
                 .alterers(new Mutator<>(0.2))  // 变异概率0.2
                 .constraint(new Constraint<IntegerGene, Double>() {
                     @Override
@@ -322,41 +410,47 @@ public class GAModel {
                     public Phenotype<IntegerGene, Double> repair(Phenotype<IntegerGene, Double> individual, long generation) {
                         boolean isNeedRepair = !test(individual);
                         if (isNeedRepair) {
-                            IntegerGene MGene = IntegerGene.of(2, 2 ,getMapMinValue(mDegrees));
-                            IntegerChromosome M = IntegerChromosome.of(2, getMapMinValue(mDegrees), 1).newInstance(ISeq.of(MGene));
-                            // 将两个染色体连接起来，创建双染色体基因型
-                            Genotype<IntegerGene> genotype = Genotype.of(M, chromosome);
-                            // System.out.println("individual222222222 : " + individual);
-
-                            return Phenotype.of(genotype, generation);
+                            System.out.println(111111111);
+                            try {
+                                return Phenotype.of(getSolutionGenotype(), generation);
+                            } catch (IOException | ClassNotFoundException e) {
+                                throw new RuntimeException(e);
+                            }
                         }
                         return null;
                     }
                 })
                 .build();
 
-
-
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
+
+        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(30);
 
         EvolutionResult<IntegerGene, Double> result = engine.stream(initialPopulation)
                 .limit(Limits.bySteadyFitness(100))
                 .peek(Statistics)
-                .map((EvolutionResult) -> {
-                    // System.out.println("EvolutionResult:   " +  EvolutionResult);
-                    return EvolutionResult;
-                })
                 .collect(EvolutionResult.toBestEvolutionResult());
 
-        double M =  result.getBestPhenotype().getGenotype().getChromosome(0).getGene(0).intValue();
+        double M = result.getBestPhenotype().getGenotype().getChromosome(0).getGene(0).intValue();
         double N = 0;
         for (int i = 0; i < data_placement_chromosome.length(); i++) {
             N += result.getBestPhenotype().getGenotype().getChromosome(1).getGene(i).intValue();
         }
 
+        mCost = N / M;
+
         System.out.println("statistics \n" + Statistics);
         System.out.println("Best Solution: " + result.getBestPhenotype());
-        System.out.println("GAModel Cost: " + N/M);
+        // System.out.println("GAModel Cost: " + N/M);
 
+    }
+
+
+    public double getCost() {
+        return mCost;
+    }
+
+    public int getPacketsNeed() {
+        return mPacketsNeed;
     }
 }

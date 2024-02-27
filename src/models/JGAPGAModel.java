@@ -325,7 +325,7 @@ public class JGAPGAModel {
             }
             // System.out.println("SelectedServerList" + SelectedServerList);
         }
-        // System.out.println("MinCostServerList" + MinCostServerList);
+        System.out.println("MinCostServerList" + MinCostServerList.size());
         mSelectedServerList = MinCostServerList;
         mPacketsNeed = best_pn;
         // System.out.println("best_pn: " + mPacketsNeed);
@@ -433,8 +433,8 @@ public class JGAPGAModel {
         }
 
         Configuration.reset();
-        System.out.println("m:  " + fittestChromosome.getGene(0));
-        System.out.println("GAServerList" + GAServerList);
+        // System.out.println("m:  " + fittestChromosome.getGene(0));
+        // System.out.println("GAServerList" + GAServerList);
     }
 
 
