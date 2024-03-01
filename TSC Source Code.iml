@@ -8,6 +8,11 @@
       <src_folder value="file://$MODULE_DIR$/src" expected_position="1" />
     </src_description>
   </component>
+  <component name="FacetManager">
+    <facet type="Python" name="Python">
+      <configuration sdkName="Python 3.9" />
+    </facet>
+  </component>
   <component name="NewModuleRootManager">
     <output url="file://$MODULE_DIR$/bin" />
     <exclude-output />
@@ -49,5 +54,6 @@
     <orderEntry type="library" name="gavaghan.geodesy" level="project" />
     <orderEntry type="library" name="io.jenetics" level="project" />
     <orderEntry type="library" name="net.sf.jgap" level="project" />
+    <orderEntry type="library" name="Python 3.9 interpreter library" level="application" />
   </component>
 </module>

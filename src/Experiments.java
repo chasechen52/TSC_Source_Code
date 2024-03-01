@@ -67,7 +67,7 @@ public class Experiments {
             Calendar cal = Calendar.getInstance();
             SimpleDateFormat sdf = new SimpleDateFormat("dd-HH-mm");
 
-            Path file = Paths.get("ECModels Comparision" + sdf.format(cal.getTime()) + ".excel");
+            Path file = Paths.get("ECModels Comparision" + sdf.format(cal.getTime()) + ".txt");
             // Path file = Paths.get("Synthetic - results-" + sdf.format(cal.getTime()) + ".txt");
 
             Files.write(file, mLines, Charset.forName("UTF-8"));
@@ -641,7 +641,7 @@ public class Experiments {
         int serverNumber;
         double d;
         int h;
-        int population = 30;
+        int population = 100;
 
         // serverNumber test 1
         serverNumber = 10;

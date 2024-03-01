@@ -205,6 +205,71 @@ public class GAModel {
         return newSelectedServerKey;
     }
 
+    /**
+     * 获取候选服务器List中到已选择服务器List距离最大的TopK个服务器。
+     *
+     * @param candidateServersList 候选服务器List
+     * @param selectedServerList   已选择服务器List
+     * @return 候选服务器List中到已选择服务器List距离最大的前TopK个服务器
+     */
+    public List<Integer> getTopKMaxDistanceServers(List<Integer> candidateServersList, List<Integer> selectedServerList, int TopK) {
+        List<Integer> topKMaxDistanceServers = new ArrayList<>(TopK);
+
+        // 创建一个根据最大距离排序的自定义比较器
+        Comparator<Integer> maxDistanceComparator = (server1, server2) -> {
+            int distance1 = calculateMaxDistance(server1, selectedServerList);
+            int distance2 = calculateMaxDistance(server2, selectedServerList);
+            return Integer.compare(distance2, distance1); // 降序排列
+        };
+
+        // 使用自定义比较器对候选服务器List进行排序
+        Collections.sort(candidateServersList, maxDistanceComparator);
+
+        // 从排序后的列表中取前3个服务器
+        for (int i = 0; i < Math.min(TopK, candidateServersList.size()); i++) {
+            topKMaxDistanceServers.add(candidateServersList.get(i));
+        }
+
+        return topKMaxDistanceServers;
+    }
+
+
+    /**
+     * 计算候选服务器到已选择服务器List中距离的最大值。
+     *
+     * @param candidateServer      候选服务器
+     * @param selectedServerList   已选择服务器List
+     * @return 候选服务器到已选择服务器List中距离的最大值
+     */
+    private int calculateMaxDistance(int candidateServer, List<Integer> selectedServerList) {
+        int maxDistance = Integer.MIN_VALUE;
+
+        for (Integer selectedServer : selectedServerList) {
+            int distance = mDistanceMatrix[candidateServer][selectedServer];
+            maxDistance = Math.max(maxDistance, distance);
+        }
+
+        return maxDistance;
+    }
+
+    /**
+     * 从topKMaxDistanceServers中随机选择一个数。
+     *
+     * @param topKMaxDistanceServers topKMaxDistanceServers列表
+     * @return 随机选择的一个数
+     */
+    public int getRandomServerFromTopK(List<Integer> topKMaxDistanceServers) {
+        if (topKMaxDistanceServers.isEmpty()) {
+            throw new IllegalArgumentException("top3MaxDistanceServers列表不能为空");
+        }
+
+        // 使用Random类生成随机数
+        Random random = new Random();
+        int randomIndex = random.nextInt(topKMaxDistanceServers.size());
+
+        return topKMaxDistanceServers.get(randomIndex);
+    }
+
     public void updatePacketsNeed(int newSelectedServerKey) {
         // 对newSelectedServerKey可访问节点的mDataPacketsNeed值减1
         for (int server = 0; server < mServersNumber; ++server) {
@@ -244,18 +309,22 @@ public class GAModel {
             double cost;
             List<Integer> SelectedServerList = new ArrayList<>();
             List<Integer> candidateServersList = getCandidateServersList(mDegrees, candidatesNumber); // step1: 获取候选服务器列表
-            int initialServer = getLongestDistanceKey(candidateServersList, SelectedServerList); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
+            List<Integer> topKMaxDistanceServers = getTopKMaxDistanceServers(candidateServersList,SelectedServerList, candidatesNumber / 2 + 1); // 获取candidateSeversList中最大的TopK个服务器
+            // int initialServer = getLongestDistanceKey(candidateServersList, SelectedServerList); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
+            int initialServer = getRandomServerFromTopK(topKMaxDistanceServers); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
             SelectedServerList.add(initialServer);
             updatePacketsNeed(initialServer); // 选择后更新每个节点所需要的数据包数量
             mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
-            updateMDegreesMap(mDegrees, initialServer);
+            // updateMDegreesMap(mDegrees, initialServer);
             while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
                 // 更新候选服务器
                 candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
                 // System.out.println("candidateServersList" + candidateServersList);
                 // System.out.println("candidateServersList : " + candidateServersList);
+                List<Integer> newTopKMaxDistanceServers = getTopKMaxDistanceServers(candidateServersList,SelectedServerList, candidatesNumber / 2 + 1); // 获取candidateSeversList中最大的TopK个服务器
                 // int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
-                int newSelectedServer = getLongestDistanceKey(candidateServersList, SelectedServerList);
+                int newSelectedServer = getRandomServerFromTopK(newTopKMaxDistanceServers);
+
                 SelectedServerList.add(newSelectedServer);
                 updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
                 mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
@@ -290,7 +359,10 @@ public class GAModel {
     public ISeq<Genotype<IntegerGene>> getInitialPopulation(int populationSize) throws IOException, ClassNotFoundException {
         Genotype<IntegerGene>[] genotypes = new Genotype[populationSize];
         for (int i = 0; i < populationSize; i++) {
-            genotypes[i] = getSolutionGenotype();
+            IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, mServersNumber);
+            IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, mapMinDegree, 1);
+            Genotype<IntegerGene> randomSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
+            genotypes[i] = i < populationSize / 2 ? getSolutionGenotype() : randomSolution;
             // System.out.println("genotypes: " + genotypes[i].getChromosome(1));
         }
         return ISeq.of(genotypes);
@@ -425,7 +497,7 @@ public class GAModel {
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
 
-        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(30);
+        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(100);
 
         EvolutionResult<IntegerGene, Double> result = engine.stream(initialPopulation)
                 .limit(Limits.bySteadyFitness(100))
