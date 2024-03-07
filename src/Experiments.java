@@ -649,7 +649,7 @@ public class Experiments {
         h = 1;
 
         //
-        System.out.println("GA Cost: " + mGACost + " m: " + mGA);
+        // System.out.println("GA Cost: " + mGACost + " m: " + mGA);
         // System.out.println("Vote Cost: " + mECGreedyVoteCost + " m: " + mVote);
         for (int ep = 0; ep < 5; ep++) {
 
@@ -670,125 +670,125 @@ public class Experiments {
             mLines.add("Vote Cost: " + sumVoteCost / epoch);
             serverNumber += 5;
         }
-
-        // serverNumber test 2
-        serverNumber = 50;
-        d = 2;
-        h = 1;
-        for (int ep = 0; ep < 5; ep++) {
-            double sumGACost = 0;
-            double sumVoteCost = 0;
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            for (int i = 0; i < epoch; i++) {
-                runGACost(population, serverNumber);
-                runECGreedyVoteCost();
-                sumGACost += mGACost;
-                sumVoteCost += mECGreedyVoteCost;
-            }
-
-            mLines.add("============================== serverNumber test 2 ==============================");
-            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
-            mLines.add("GA Cost: " + sumGACost / epoch);
-            mLines.add("Vote Cost: " + sumVoteCost / epoch);
-            serverNumber += 50;
-        }
-
-        // d test 1
-        serverNumber = 20;
-        d = 1;
-        h = 1;
-        for (int ep = 0; ep < 5; ep++) {
-
-            double sumGACost = 0;
-            double sumVoteCost = 0;
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            for (int i = 0; i < epoch; i++) {
-                runGACost(population, serverNumber);
-                runECGreedyVoteCost();
-                sumGACost += mGACost;
-                sumVoteCost += mECGreedyVoteCost;
-            }
-
-            mLines.add("============================== d test 1 ==============================");
-            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
-            mLines.add("GA Cost: " + sumGACost / epoch);
-            mLines.add("Vote Cost: " + sumVoteCost / epoch);
-            d += 0.3;
-        }
-
-        // d test 2
-        serverNumber = 150;
-        d = 2;
-        h = 1;
-        for (int ep = 0; ep < 5; ep++) {
-
-            double sumGACost = 0;
-            double sumVoteCost = 0;
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            for (int i = 0; i < epoch; i++) {
-                runGACost(population, serverNumber);
-                runECGreedyVoteCost();
-                sumGACost += mGACost;
-                sumVoteCost += mECGreedyVoteCost;
-            }
-
-            mLines.add("============================== d test 2 ==============================");
-            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
-            mLines.add("GA Cost: " + sumGACost / epoch);
-            mLines.add("Vote Cost: " + sumVoteCost / epoch);
-            d += 0.6;
-        }
-
-        // h test 1
-        serverNumber = 20;
-        d = 1;
-        h = 1;
-        for (int ep = 0; ep < 5; ep++) {
-
-            double sumGACost = 0;
-            double sumVoteCost = 0;
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            for (int i = 0; i < epoch; i++) {
-                runGACost(population, serverNumber);
-                runECGreedyVoteCost();
-                sumGACost += mGACost;
-                sumVoteCost += mECGreedyVoteCost;
-            }
-
-            mLines.add("============================== h test 1 ==============================");
-            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
-            mLines.add("GA Cost: " + sumGACost / epoch);
-            mLines.add("Vote Cost: " + sumVoteCost / epoch);
-            h += 1;
-        }
-
-        // h test 2
-        serverNumber = 150;
-        d = 2;
-        h = 1;
-        for (int ep = 0; ep < 5; ep++) {
-
-            double sumGACost = 0;
-            double sumVoteCost = 0;
-            int[][] dism = GraphGenerate(serverNumber, d);
-            ModelSetup(serverNumber, dism, h);
-            for (int i = 0; i < epoch; i++) {
-                runGACost(population, serverNumber);
-                runECGreedyVoteCost();
-                sumGACost += mGACost;
-                sumVoteCost += mECGreedyVoteCost;
-            }
-
-            mLines.add("============================== h test 2 ==============================");
-            mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
-            mLines.add("GA Cost: " + sumGACost / epoch);
-            mLines.add("Vote Cost: " + sumVoteCost / epoch);
-            h += 1;
-        }
+        //
+        // // serverNumber test 2
+        // serverNumber = 50;
+        // d = 2;
+        // h = 1;
+        // for (int ep = 0; ep < 5; ep++) {
+        //     double sumGACost = 0;
+        //     double sumVoteCost = 0;
+        //     int[][] dism = GraphGenerate(serverNumber, d);
+        //     ModelSetup(serverNumber, dism, h);
+        //     for (int i = 0; i < epoch; i++) {
+        //         runGACost(population, serverNumber);
+        //         runECGreedyVoteCost();
+        //         sumGACost += mGACost;
+        //         sumVoteCost += mECGreedyVoteCost;
+        //     }
+        //
+        //     mLines.add("============================== serverNumber test 2 ==============================");
+        //     mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
+        //     mLines.add("GA Cost: " + sumGACost / epoch);
+        //     mLines.add("Vote Cost: " + sumVoteCost / epoch);
+        //     serverNumber += 50;
+        // }
+        //
+        // // d test 1
+        // serverNumber = 20;
+        // d = 1;
+        // h = 1;
+        // for (int ep = 0; ep < 5; ep++) {
+        //
+        //     double sumGACost = 0;
+        //     double sumVoteCost = 0;
+        //     int[][] dism = GraphGenerate(serverNumber, d);
+        //     ModelSetup(serverNumber, dism, h);
+        //     for (int i = 0; i < epoch; i++) {
+        //         runGACost(population, serverNumber);
+        //         runECGreedyVoteCost();
+        //         sumGACost += mGACost;
+        //         sumVoteCost += mECGreedyVoteCost;
+        //     }
+        //
+        //     mLines.add("============================== d test 1 ==============================");
+        //     mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
+        //     mLines.add("GA Cost: " + sumGACost / epoch);
+        //     mLines.add("Vote Cost: " + sumVoteCost / epoch);
+        //     d += 0.3;
+        // }
+        //
+        // // d test 2
+        // serverNumber = 150;
+        // d = 2;
+        // h = 1;
+        // for (int ep = 0; ep < 5; ep++) {
+        //
+        //     double sumGACost = 0;
+        //     double sumVoteCost = 0;
+        //     int[][] dism = GraphGenerate(serverNumber, d);
+        //     ModelSetup(serverNumber, dism, h);
+        //     for (int i = 0; i < epoch; i++) {
+        //         runGACost(population, serverNumber);
+        //         runECGreedyVoteCost();
+        //         sumGACost += mGACost;
+        //         sumVoteCost += mECGreedyVoteCost;
+        //     }
+        //
+        //     mLines.add("============================== d test 2 ==============================");
+        //     mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
+        //     mLines.add("GA Cost: " + sumGACost / epoch);
+        //     mLines.add("Vote Cost: " + sumVoteCost / epoch);
+        //     d += 0.6;
+        // }
+        //
+        // // h test 1
+        // serverNumber = 20;
+        // d = 1;
+        // h = 1;
+        // for (int ep = 0; ep < 5; ep++) {
+        //
+        //     double sumGACost = 0;
+        //     double sumVoteCost = 0;
+        //     int[][] dism = GraphGenerate(serverNumber, d);
+        //     ModelSetup(serverNumber, dism, h);
+        //     for (int i = 0; i < epoch; i++) {
+        //         runGACost(population, serverNumber);
+        //         runECGreedyVoteCost();
+        //         sumGACost += mGACost;
+        //         sumVoteCost += mECGreedyVoteCost;
+        //     }
+        //
+        //     mLines.add("============================== h test 1 ==============================");
+        //     mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
+        //     mLines.add("GA Cost: " + sumGACost / epoch);
+        //     mLines.add("Vote Cost: " + sumVoteCost / epoch);
+        //     h += 1;
+        // }
+        //
+        // // h test 2
+        // serverNumber = 150;
+        // d = 2;
+        // h = 1;
+        // for (int ep = 0; ep < 5; ep++) {
+        //
+        //     double sumGACost = 0;
+        //     double sumVoteCost = 0;
+        //     int[][] dism = GraphGenerate(serverNumber, d);
+        //     ModelSetup(serverNumber, dism, h);
+        //     for (int i = 0; i < epoch; i++) {
+        //         runGACost(population, serverNumber);
+        //         runECGreedyVoteCost();
+        //         sumGACost += mGACost;
+        //         sumVoteCost += mECGreedyVoteCost;
+        //     }
+        //
+        //     mLines.add("============================== h test 2 ==============================");
+        //     mLines.add("ServersNumber:" + serverNumber + "  Density:" + d + "  Hops:" + h);
+        //     mLines.add("GA Cost: " + sumGACost / epoch);
+        //     mLines.add("Vote Cost: " + sumVoteCost / epoch);
+        //     h += 1;
+        // }
     }
 
     private static void runJGAPGAExample() throws ClassNotFoundException, IOException, InvalidConfigurationException {
