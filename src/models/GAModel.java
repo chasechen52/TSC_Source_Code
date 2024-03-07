@@ -359,11 +359,19 @@ public class GAModel {
     public ISeq<Genotype<IntegerGene>> getInitialPopulation(int populationSize) throws IOException, ClassNotFoundException {
         Genotype<IntegerGene>[] genotypes = new Genotype[populationSize];
         for (int i = 0; i < populationSize; i++) {
-            IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, mServersNumber);
-            IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, mapMinDegree, 1);
-            Genotype<IntegerGene> randomSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
-            genotypes[i] = i < populationSize / 2 ? getSolutionGenotype() : randomSolution;
+            // IntegerChromosome data_placement_chromosome = IntegerChromosome.of(0, 1, mServersNumber);
+            // IntegerChromosome M_number_chromosome = IntegerChromosome.of(2, mapMinDegree, 1);
+            // Genotype<IntegerGene> randomSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
+            // System.out.println("randomSolution:  " + randomSolution);
+            genotypes[i] = getSolutionGenotype();
+            // if (i < populationSize / 2) {
+            //     genotypes[i] = getSolutionGenotype();
+            // } else {
+            //     genotypes[i] = randomSolution.newInstance();
+            // }
+            // genotypes[i] = i < populationSize / 2 ? getSolutionGenotype() : randomSolution;
             // System.out.println("genotypes: " + genotypes[i].getChromosome(1));
+            // System.out.println(genotypes.length);
         }
         return ISeq.of(genotypes);
     }
@@ -441,6 +449,7 @@ public class GAModel {
                 // .offspringFraction(0.8)
                 // .survivorsFraction(0.2)
                 // .populationSize(population)
+                .populationSize(1000)
                 .alterers(new Mutator<>(0.2))  // 变异概率0.2
                 .offspringFraction(0.3) // 产生子代的比例
                 .optimize(Optimize.MAXIMUM) //
@@ -497,12 +506,16 @@ public class GAModel {
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
 
-        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(100);
+        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(500);
+
+        System.out.println("initialPopulation: " + initialPopulation.length());
 
         EvolutionResult<IntegerGene, Double> result = engine.stream(initialPopulation)
                 .limit(Limits.bySteadyFitness(100))
                 .peek(Statistics)
                 .collect(EvolutionResult.toBestEvolutionResult());
+
+        System.out.println("population:  " + result.getPopulation().size());
 
         double M = result.getBestPhenotype().getGenotype().getChromosome(0).getGene(0).intValue();
         double N = 0;
