@@ -175,35 +175,35 @@ public class GAModel {
         List<Map.Entry<Integer, Integer>> halfEntries = getRandomHalfEntries(map, topK);
 
         return halfEntries.stream()
-                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                // .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
                 .limit(Math.min(topK, halfEntries.size()))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
     }
 
 
-    public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
-        // 计算方法一： 最短距离中的最大距离
-        int distanceInSet = Integer.MIN_VALUE;
-        int newSelectedServerKey = 0;
-        for (Integer candidateServer : candidateServersList) {
-            int minDistanceKey = 0;
-            int distance = Integer.MAX_VALUE;
-            // 计算候选服务器到解服务器的距离
-            for (Integer selectedServer : selectedServerList) {
-                if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
-                    minDistanceKey = selectedServer;
-                    distance = mDistanceMatrix[candidateServer][selectedServer];
-                }
-            }
-            if (distanceInSet < distance) {
-                distanceInSet = distance;
-                newSelectedServerKey = candidateServer;
-            }
-            // System.out.println("newSelectedServerKey" + newSelectedServerKey);
-        }
-        return newSelectedServerKey;
-    }
+    // public int getLongestDistanceKey(List<Integer> candidateServersList, List<Integer> selectedServerList) {
+    //     // 计算方法一： 最短距离中的最大距离
+    //     int distanceInSet = Integer.MIN_VALUE;
+    //     int newSelectedServerKey = 0;
+    //     for (Integer candidateServer : candidateServersList) {
+    //         int minDistanceKey = 0;
+    //         int distance = Integer.MAX_VALUE;
+    //         // 计算候选服务器到解服务器的距离
+    //         for (Integer selectedServer : selectedServerList) {
+    //             if (mDistanceMatrix[candidateServer][selectedServer] < distance) {
+    //                 minDistanceKey = selectedServer;
+    //                 distance = mDistanceMatrix[candidateServer][selectedServer];
+    //             }
+    //         }
+    //         if (distanceInSet < distance) {
+    //             distanceInSet = distance;
+    //             newSelectedServerKey = candidateServer;
+    //         }
+    //         // System.out.println("newSelectedServerKey" + newSelectedServerKey);
+    //     }
+    //     return newSelectedServerKey;
+    // }
 
     /**
      * 获取候选服务器List中到已选择服务器List距离最大的TopK个服务器。
@@ -212,44 +212,146 @@ public class GAModel {
      * @param selectedServerList   已选择服务器List
      * @return 候选服务器List中到已选择服务器List距离最大的前TopK个服务器
      */
-    public List<Integer> getTopKMaxDistanceServers(List<Integer> candidateServersList, List<Integer> selectedServerList, int TopK) {
-        List<Integer> topKMaxDistanceServers = new ArrayList<>(TopK);
-
-        // 创建一个根据最大距离排序的自定义比较器
-        Comparator<Integer> maxDistanceComparator = (server1, server2) -> {
-            int distance1 = calculateMaxDistance(server1, selectedServerList);
-            int distance2 = calculateMaxDistance(server2, selectedServerList);
-            return Integer.compare(distance2, distance1); // 降序排列
-        };
-
-        // 使用自定义比较器对候选服务器List进行排序
-        Collections.sort(candidateServersList, maxDistanceComparator);
-
-        // 从排序后的列表中取前3个服务器
-        for (int i = 0; i < Math.min(TopK, candidateServersList.size()); i++) {
-            topKMaxDistanceServers.add(candidateServersList.get(i));
-        }
-
-        return topKMaxDistanceServers;
-    }
-
 
     /**
-     * 计算候选服务器到已选择服务器List中距离的最大值。
+     * 获取候选服务器列表中与已选择服务器列表距离最大的 Top K 个服务器。
+     * 时间复杂度为：O(n * logTopK)
+     *
+     * @param candidateServers 候选服务器列表
+     * @param selectedServerList  已选择服务器列表
+     * @param TopK                需要获取的最大距离服务器数量
+    //  * @return 距离最大的 Top K 个服务器列表
+    //  */
+
+    public List<Integer> getTopKMaxDistanceServers(List<Integer> candidateServers, List<Integer> selectedServerList, int TopK) {
+        // 创建一个小顶堆,用于存储最大的k个距离及对应的服务器
+        PriorityQueue<Integer> minHeap = new PriorityQueue<>(Comparator.comparingInt(server -> calculateMinDistance(server, selectedServerList)));
+
+        // 将所有候选服务器加入小顶堆
+        for (int server : candidateServers) {
+            minHeap.offer(server);
+        }
+
+        // 从小顶堆中取出最大的k个距离对应的服务器
+        List<Integer> topKServers = new ArrayList<>(TopK);
+        for (int i = 0; i < TopK && !minHeap.isEmpty(); i++) {
+            topKServers.add(minHeap.poll());
+        }
+
+        return topKServers;
+    }
+
+    // public List<Integer> getTopKMaxDistanceServers(List<Integer> candidateServersList, List<Integer> selectedServerList, int TopK) {
+    //     List<Integer> topKMaxDistanceServers = new ArrayList<>(TopK);
+    //
+    //     // 创建一个根据最大距离排序的自定义比较器
+    //     Comparator<Integer> maxDistanceComparator = (server1, server2) -> {
+    //         int distance1 = calculateMinDistance(server1, selectedServerList);
+    //         int distance2 = calculateMinDistance(server2, selectedServerList);
+    //         return Integer.compare(distance2, distance1); // 降序排列
+    //     };
+    //
+    //     // 使用自定义比较器对候选服务器List进行排序
+    //     Collections.sort(candidateServersList, maxDistanceComparator);
+    //
+    //     // 从排序后的列表中取前3个服务器
+    //     for (int i = 0; i < Math.min(TopK, candidateServersList.size()); i++) {
+    //         topKMaxDistanceServers.add(candidateServersList.get(i));
+    //     }
+    //
+    //     return topKMaxDistanceServers;
+    // }
+
+    /**
+     * 快速选择算法,获取与已选择服务器列表距离最大的 Top 3 个服务器。
+     *
+     * @param candidateServers 候选服务器列表
+     * @param selectedServerList  已选择服务器列表
+     * @return 距离最大的 Top 3 个服务器列表
+     */
+    // public List<Integer> getTopKMaxDistanceServers(List<Integer> candidateServers, List<Integer> selectedServerList, int TopK) {
+    //     List<Integer> topKServers = new ArrayList<>(TopK);
+    //     quickSelect(candidateServers, 0, candidateServers.size() - 1, TopK, selectedServerList, topKServers);
+    //     return topKServers;
+    // }
+
+    /**
+     * 快速选择算法的核心实现
+     *
+     * @param servers               候选服务器列表
+     * @param left                  待处理区间的左边界
+     * @param right                 待处理区间的右边界
+     * @param k                     需要选择的最大距离服务器数量
+     * @param selectedServerList    已选择服务器列表
+     * @param topKServers           用于存储最终结果的列表
+     */
+    private void quickSelect(List<Integer> servers, int left, int right, int k, List<Integer> selectedServerList,  List<Integer> topKServers) {
+        int pivotIndex = partition(servers, left, right, selectedServerList);
+        int leftCount = pivotIndex - left + 1;
+
+        if (leftCount == k) {
+            for (int i = left; i <= pivotIndex; i++) {
+                topKServers.add(servers.get(i));
+            }
+            return;
+        } else if (leftCount > k) {
+            quickSelect(servers, left, pivotIndex - 1, k, selectedServerList, topKServers);
+        } else {
+            for (int i = left; i <= pivotIndex; i++) {
+                topKServers.add(servers.get(i));
+            }
+            quickSelect(servers, pivotIndex + 1, right, k - leftCount, selectedServerList, topKServers);
+        }
+    }
+
+    /**
+     * 快速选择算法中的partition操作
+     *
+     * @param servers               待partition的服务器列表
+     * @param left                  待处理区间的左边界
+     * @param right                 待处理区间的右边界
+     * @param selectedServerList    已选择服务器列表
+     * @return pivot元素的索引
+     */
+    private int partition(List<Integer> servers, int left, int right, List<Integer> selectedServerList) {
+        int pivotIndex = left + (int) Math.floor(Math.random() * (right - left + 1));
+        int pivotDistance = calculateMinDistance(servers.get(pivotIndex), selectedServerList);
+
+        swap(servers, pivotIndex, right);
+        int storeIndex = left;
+
+        for (int i = left; i < right; i++) {
+            int distance = calculateMinDistance(servers.get(i), selectedServerList);
+            if (distance > pivotDistance) {
+                swap(servers, i, storeIndex);
+                storeIndex++;
+            }
+        }
+
+        swap(servers, storeIndex, right);
+        return storeIndex;
+    }
+
+    private void swap(List<Integer> servers, int i, int j) {
+        int temp = servers.get(i);
+        servers.set(i, servers.get(j));
+        servers.set(j, temp);
+    }
+
+    /**
+     * 计算候选服务器到已选择服务器List中距离的最小值。
      *
      * @param candidateServer      候选服务器
      * @param selectedServerList   已选择服务器List
-     * @return 候选服务器到已选择服务器List中距离的最大值
+     * @return 候选服务器到已选择服务器List中距离的最小值
      */
-    private int calculateMaxDistance(int candidateServer, List<Integer> selectedServerList) {
-        int maxDistance = Integer.MIN_VALUE;
-
-        for (Integer selectedServer : selectedServerList) {
+    private int calculateMinDistance(int candidateServer, List<Integer> selectedServerList) {
+        int minDistance = Integer.MAX_VALUE;
+        for (int selectedServer : selectedServerList) {
             int distance = mDistanceMatrix[candidateServer][selectedServer];
-            maxDistance = Math.max(maxDistance, distance);
+            minDistance = Math.min(minDistance, distance);
         }
-
-        return maxDistance;
+        return minDistance;
     }
 
     /**
@@ -506,7 +608,7 @@ public class GAModel {
 
         EvolutionStatistics<Double, ?> Statistics = EvolutionStatistics.ofNumber();
 
-        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(500);
+        ISeq<Genotype<IntegerGene>> initialPopulation = getInitialPopulation(1000);
 
         System.out.println("initialPopulation: " + initialPopulation.length());
 
