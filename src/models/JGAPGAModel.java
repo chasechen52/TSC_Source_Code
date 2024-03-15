@@ -5,6 +5,7 @@ import org.jgap.impl.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 
@@ -18,7 +19,7 @@ public class JGAPGAModel {
 
     private double mCost; // Cost
     private double mReplicaCost;
-    private static Map<Integer, Integer> mDegrees; // 度
+    private static ConcurrentHashMap<Integer, Integer> mDegrees; // 度
     private Map<Integer, Integer> mDataPacketsNeed; // 尚需数据块的个数
     private List<Integer> mSelectedServerList; // 数据节点列表
 
@@ -84,7 +85,7 @@ public class JGAPGAModel {
 
         mAccessMatrix = new int[mServersNumber][mServersNumber];
         mSelectedServerList = new ArrayList<>();
-        mDegrees = new HashMap<>();
+        mDegrees = new ConcurrentHashMap<>();
         mDataPacketsNeed = new HashMap<>();
     }
 

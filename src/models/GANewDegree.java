@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public class GAModel {
+public class GANewDegree {
 
     private static int mServersNumber;   // 服务器数量
     private static int[][] mAccessMatrix;   // 可访问矩阵,初始为全0矩阵
@@ -33,7 +33,7 @@ public class GAModel {
 
     private int mapMinDegree;
 
-    public GAModel(int serversNumber, int[][] distancematrix, int hops) // 构造函数
+    public GANewDegree(int serversNumber, int[][] distancematrix, int hops) // 构造函数
     {
         mServersNumber = serversNumber;
         mDistanceMatrix = distancematrix;
@@ -159,8 +159,8 @@ public class GAModel {
         return array;
     }
 
-    private static List<Map.Entry<Integer, Integer>> getRandomEntries(ConcurrentHashMap<Integer, Integer> map, int topK) {
-        List<Map.Entry<Integer, Integer>> shuffledEntries = map.entrySet().stream()
+    private static List<Map.Entry<Integer, Double>> getRandomEntries(ConcurrentHashMap<Integer, Double> map, int topK) {
+        List<Map.Entry<Integer, Double>> shuffledEntries = map.entrySet().stream()
                 .collect(Collectors.collectingAndThen(
                         Collectors.toList(),
                         list -> {
@@ -177,14 +177,14 @@ public class GAModel {
     }
 
 
-    public static List<Integer> getCandidateServersList(ConcurrentHashMap<Integer, Integer> map, int topK) {
+    public static List<Integer> getCandidateServersList(ConcurrentHashMap<Integer, Double> map, int topK) {
         if (map.isEmpty()) {
             return Collections.emptyList();
         }
-        List<Map.Entry<Integer, Integer>> halfEntries = getRandomEntries(map, topK);
+        List<Map.Entry<Integer, Double>> halfEntries = getRandomEntries(map, topK);
 
         return halfEntries.stream()
-                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                 .limit(Math.min(topK, halfEntries.size()))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
@@ -310,29 +310,28 @@ public class GAModel {
         int best_pn = 2; // 最低cost对应的数据块数
         int candidatesNumber = 5;
         List<Integer> MinCostServerList = new ArrayList<>();
-        // System.out.println("degreesMap" + degreesMap);
         for (int m = 2; m <= mapMinDegree; ++m) {
             mDegrees.clear();
             ConvertDistoAccAndCalDegree(); // 由于每次循环对mDegrees进行了删除，因此每次都需要重新生成mDegrees
             initDataPacketsNeed(m); // 初始化mDataPacketsNeed
             double cost;
             List<Integer> SelectedServerList = new ArrayList<>();
-            List<Integer> candidateServersList = getCandidateServersList(mDegrees, candidatesNumber); // step1: 获取候选服务器列表
+            List<Integer> candidateServersList = getCandidateServersList(newDegrees, candidatesNumber); // step1: 获取候选服务器列表
             List<Integer> topKMaxDistanceServers = getTopKMaxDistanceServers(candidateServersList, SelectedServerList, candidatesNumber / 2 + 1); // 获取candidateSeversList中最大的TopK个服务器
             // int initialServer = getLongestDistanceKey(candidateServersList, SelectedServerList); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
             int initialServer = getRandomServerFromTopK(topKMaxDistanceServers); // 在候选服务器列表中选择距离解服务器最大的加入解服务器列表
             SelectedServerList.add(initialServer);
             updatePacketsNeed(initialServer); // 选择后更新每个节点所需要的数据包数量
-            mDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
+            newDegrees.remove(initialServer); // 如果某节点已经被选择，则在mDegrees中删除
             // updateMDegreesMap(mDegrees, initialServer);
             while (!checkPacketsRequired()) { // 判断当前部署方案是否满足数据请求要求，mDataPacketsNeed是否全为0
                 // 更新候选服务器
-                candidateServersList = getCandidateServersList(mDegrees, candidatesNumber);
+                candidateServersList = getCandidateServersList(newDegrees, candidatesNumber);
                 List<Integer> newTopKMaxDistanceServers = getTopKMaxDistanceServers(candidateServersList, SelectedServerList, candidatesNumber / 2 + 1); // 获取candidateSeversList中最大的TopK个服务器
                 int newSelectedServer = getRandomServerFromTopK(newTopKMaxDistanceServers);
                 SelectedServerList.add(newSelectedServer);
                 updatePacketsNeed(newSelectedServer); // 更新每个服务器需要的数据包数量
-                mDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
+                newDegrees.remove(newSelectedServer);  // 如果某节点已经被选择，则在mDegrees中删除
                 // updateMDegreesMap(mDegrees, newSelectedServer);
             }
             cost = (double) SelectedServerList.size() / (double) m;
@@ -442,7 +441,7 @@ public class GAModel {
         Genotype<IntegerGene> PLSolution = Genotype.of(M_number_chromosome, data_placement_chromosome);
         // System.out.println("PLSolution" + PLSolution);
 
-        Engine<IntegerGene, Double> engine = Engine.builder(GAModel::fitness, PLSolution)
+        Engine<IntegerGene, Double> engine = Engine.builder(GANewDegree::fitness, PLSolution)
                 // .constraint(new SolutionConstraint())
                 // .offspringFraction(0.8)
                 // .survivorsFraction(0.2)
