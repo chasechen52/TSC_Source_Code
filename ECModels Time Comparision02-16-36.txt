@@ -1,0 +1,37 @@
+==============================Servernumber time test==============================  
+Servernumber = 10 -------------
+ GA-0: 15.4 ,GA-1: 30.0 ,Vote: 0.7 ,cplextime: 23.4 ,degreetime: 0.2
+Servernumber = 15 -------------
+ GA-0: 16.2 ,GA-1: 16.7 ,Vote: 0.3 ,cplextime: 33.8 ,degreetime: 0.1
+Servernumber = 20 -------------
+ GA-0: 16.6 ,GA-1: 17.5 ,Vote: 0.3 ,cplextime: 57.8 ,degreetime: 0.1
+Servernumber = 25 -------------
+ GA-0: 18.5 ,GA-1: 19.1 ,Vote: 0.3 ,cplextime: 96.7 ,degreetime: 0.1
+Servernumber = 30 -------------
+ GA-0: 21.3 ,GA-1: 23.1 ,Vote: 0.3 ,cplextime: 408.0 ,degreetime: 0.1
+Servernumber = 35 -------------
+ GA-0: 27.6 ,GA-1: 25.4 ,Vote: 0.5 ,cplextime: 603.6 ,degreetime: 0.1
+==============================Dentisy time test==============================  
+d = 1.0 -------------
+ GA-0: 12.9 ,GA-1: 13.1 ,Vote: 0.1 ,cplextime: 613.9 ,degreetime: 0.0
+d = 1.3 -------------
+ GA-0: 13.2 ,GA-1: 13.4 ,Vote: 0.0 ,cplextime: 645.4 ,degreetime: 0.0
+d = 1.6 -------------
+ GA-0: 12.9 ,GA-1: 13.2 ,Vote: 0.1 ,cplextime: 664.1 ,degreetime: 0.1
+d = 1.9000000000000001 -------------
+ GA-0: 20.0 ,GA-1: 20.0 ,Vote: 0.0 ,cplextime: 689.5 ,degreetime: 0.0
+d = 2.2 -------------
+ GA-0: 19.3 ,GA-1: 19.9 ,Vote: 0.0 ,cplextime: 713.0 ,degreetime: 0.0
+d = 2.5 -------------
+ GA-0: 19.8 ,GA-1: 19.7 ,Vote: 0.1 ,cplextime: 726.5 ,degreetime: 0.0
+==============================Hops time test==============================  
+Hops = 1 -------------
+ GA-0: 13.2 ,GA-1: 13.4 ,Vote: 0.0 ,cplextime: 746.3 ,degreetime: 0.1
+Hops = 2 -------------
+ GA-0: 20.0 ,GA-1: 20.0 ,Vote: 0.0 ,cplextime: 761.1 ,degreetime: 0.0
+Hops = 3 -------------
+ GA-0: 32.9 ,GA-1: 32.6 ,Vote: 0.0 ,cplextime: 797.1 ,degreetime: 0.1
+Hops = 4 -------------
+ GA-0: 53.0 ,GA-1: 52.8 ,Vote: 0.1 ,cplextime: 853.1 ,degreetime: 0.0
+Hops = 5 -------------
+ GA-0: 46.5 ,GA-1: 46.4 ,Vote: 0.1 ,cplextime: 913.8 ,degreetime: 0.0
